@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compare — {{ case.title }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a2233;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a2233;
+      color: #fff;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header nav { margin-left: auto; display: flex; gap: 0.25rem; }
+    header nav a {
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: rgba(255,255,255,0.55);
+      transition: background 0.1s, color 0.1s;
+    }
+    header nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    header nav a.active { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .container { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+
+    /* ── Case info ── */
+    .case-header {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .case-meta { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .case-title { font-size: 1.25rem; font-weight: 700; }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .badge-ct    { background: #dbeafe; color: #1d4ed8; }
+    .badge-mri   { background: #ede9fe; color: #6d28d9; }
+    .badge-xray  { background: #fef3c7; color: #92400e; }
+    .badge-us    { background: #d1fae5; color: #065f46; }
+    .badge-other { background: #f3f4f6; color: #374151; }
+    .mode-badge {
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      background: #fef3c7; color: #92400e;
+    }
+    .prompt-label {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: #6b7280; margin-bottom: 0.4rem;
+    }
+    .prompt-text { font-size: 0.92rem; line-height: 1.65; color: #374151; }
+
+    /* ── Image viewer ── */
+    .image-section {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .image-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+    .image-icon { font-size: 1.8rem; line-height: 1; }
+    .image-info { flex: 1; }
+    .image-info p { font-size: 0.82rem; color: #6b7280; margin-top: 0.2rem; }
+    .case-image {
+      width: 100%; max-height: 400px; object-fit: contain;
+      border-radius: 6px; background: #000; display: block; margin-top: 0.75rem;
+    }
+    .btn-image {
+      display: inline-block; padding: 0.55rem 1.2rem;
+      border-radius: 7px; font-size: 0.85rem; font-weight: 600;
+      text-decoration: none; background: #f3f4f6;
+      color: #1a2233; border: 1px solid #d1d5db; white-space: nowrap;
+    }
+    .btn-image:hover { background: #e5e7eb; }
+
+    /* ── Outputs grid ── */
+    .outputs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 800px) { .outputs-grid { grid-template-columns: 1fr; } }
+
+    .output-card {
+      background: #fff; border: 2px solid #e5e7eb;
+      border-radius: 10px; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .output-card.output-a { border-color: #bfdbfe; }
+    .output-card.output-b { border-color: #bbf7d0; }
+
+    .output-card-header {
+      padding: 0.85rem 1.25rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .output-card.output-a .output-card-header { background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+    .output-card.output-b .output-card-header { background: #f0fdf4; border-bottom: 1px solid #bbf7d0; }
+
+    .output-label {
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.15rem 0.55rem; border-radius: 4px;
+    }
+    .output-a .output-label { background: #2563eb; color: #fff; }
+    .output-b .output-label { background: #16a34a; color: #fff; }
+    .output-model-name { font-size: 0.82rem; color: #6b7280; }
+
+    .output-text {
+      padding: 1.25rem; font-size: 0.82rem;
+      line-height: 1.7; color: #374151;
+      white-space: pre-wrap;
+      max-height: 420px; overflow-y: auto;
+      flex: 1;
+    }
+
+    /* ── Clinician ID ── */
+    .clinician-bar {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1rem 1.5rem;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .clinician-bar label { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+    .clinician-bar input {
+      flex: 1; min-width: 180px; max-width: 320px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;
+    }
+    .clinician-bar input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+    .hint { font-size: 0.78rem; color: #9ca3af; }
+
+    /* ── Evaluation sections ── */
+    .eval-section {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .eval-section-head { margin-bottom: 1.25rem; }
+    .eval-section-head h2 {
+      font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 0.2rem;
+    }
+    .eval-section-head p { font-size: 0.78rem; color: #9ca3af; }
+
+    /* Per-axis rows */
+    .axis-table { display: flex; flex-direction: column; gap: 0.6rem; }
+    .axis-row {
+      display: flex; align-items: center; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .axis-info { flex: 0 0 200px; }
+    .axis-name { font-size: 0.82rem; font-weight: 700; color: #374151; display: block; }
+    .axis-desc { font-size: 0.72rem; color: #9ca3af; }
+    .axis-opts { display: flex; gap: 0.4rem; }
+    /* inputs sit in .axis-row before .axis-opts (display:none removes from flow) */
+    .axis-row input[type="radio"] { display: none; }
+    .axis-opt {
+      padding: 0.4rem 0.85rem; border: 1.5px solid #e5e7eb;
+      border-radius: 6px; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; transition: border-color 0.12s, background 0.12s, color 0.12s;
+      white-space: nowrap;
+    }
+    .axis-opt:hover { border-color: #9ca3af; }
+
+    /* Axis checked highlights — A = blue, Tie = amber, B = green */
+    #acc_a:checked ~ .axis-opts label[for="acc_a"],
+    #comp_a:checked ~ .axis-opts label[for="comp_a"],
+    #safe_a:checked ~ .axis-opts label[for="safe_a"],
+    #reas_a:checked ~ .axis-opts label[for="reas_a"]
+      { background: #eff6ff; border-color: #2563eb; color: #1d4ed8; }
+
+    #acc_tie:checked ~ .axis-opts label[for="acc_tie"],
+    #comp_tie:checked ~ .axis-opts label[for="comp_tie"],
+    #safe_tie:checked ~ .axis-opts label[for="safe_tie"],
+    #reas_tie:checked ~ .axis-opts label[for="reas_tie"]
+      { background: #fffbeb; border-color: #d97706; color: #92400e; }
+
+    #acc_b:checked ~ .axis-opts label[for="acc_b"],
+    #comp_b:checked ~ .axis-opts label[for="comp_b"],
+    #safe_b:checked ~ .axis-opts label[for="safe_b"],
+    #reas_b:checked ~ .axis-opts label[for="reas_b"]
+      { background: #f0fdf4; border-color: #16a34a; color: #15803d; }
+
+    /* 5-point overall scale */
+    .overall-wrap input[type="radio"] { display: none; }
+    .pref-five {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .pref-five label {
+      flex: 1; min-width: 120px;
+      padding: 0.85rem 0.5rem;
+      border: 2px solid #e5e7eb; border-radius: 9px;
+      font-size: 0.75rem; font-weight: 700; text-align: center;
+      cursor: pointer; transition: border-color 0.12s, background 0.12s;
+      line-height: 1.3;
+    }
+    .pref-five label:hover { border-color: #9ca3af; }
+    #ov_sa:checked ~ .pref-five label[for="ov_sa"]  { background: #dbeafe; border-color: #2563eb; color: #1d4ed8; }
+    #ov_la:checked ~ .pref-five label[for="ov_la"]  { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+    #ov_t:checked  ~ .pref-five label[for="ov_t"]   { background: #fffbeb; border-color: #d97706; color: #92400e; }
+    #ov_lb:checked ~ .pref-five label[for="ov_lb"]  { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+    #ov_sb:checked ~ .pref-five label[for="ov_sb"]  { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+
+    /* ── Submit ── */
+    .submit-bar {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .submit-bar p { font-size: 0.82rem; color: #6b7280; }
+    .btn-submit {
+      padding: 0.7rem 2rem; background: #2563eb; color: #fff;
+      border: none; border-radius: 8px; font-size: 0.95rem;
+      font-weight: 700; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>{{ case.title }}</h1>
+  <nav>
+    <a href="/" class="active">Cases</a>
+    <a href="/results">Results</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <form method="post" action="/evaluations/compare/{{ case.id }}">
+
+    <!-- ── Case info ── -->
+    <div class="case-header">
+      <div class="case-meta">
+        {% set m = case.modality | lower %}
+        {% if 'ct' in m %}
+          <span class="badge badge-ct">CT</span>
+        {% elif 'mri' in m or 'mr' == m %}
+          <span class="badge badge-mri">MRI</span>
+        {% elif 'x-ray' in m or 'xray' in m %}
+          <span class="badge badge-xray">X-ray</span>
+        {% elif 'ultra' in m or m == 'us' %}
+          <span class="badge badge-us">Ultrasound</span>
+        {% else %}
+          <span class="badge badge-other">{{ case.modality }}</span>
+        {% endif %}
+        <span class="case-title">{{ case.title }}</span>
+        <span class="mode-badge">Compare</span>
+      </div>
+      <p class="prompt-label">Clinical prompt</p>
+      <p class="prompt-text">{{ case.clinical_prompt }}</p>
+    </div>
+
+    <!-- ── Image viewer ── -->
+    {% if case.image_data or case.image_path %}
+    <div class="image-section">
+      <div class="image-header">
+        <div class="image-icon">🏥</div>
+        <div class="image-info">
+          <strong style="font-size:0.88rem;">Case images</strong>
+          {% if case.image_data %}
+          <p>Representative image from the model training dataset.</p>
+          {% else %}
+          <p>Opens the interactive Radiopaedia viewer in a new tab.</p>
+          {% endif %}
+        </div>
+        {% if case.image_path %}
+        <a href="{{ case.image_path }}" target="_blank" rel="noopener" class="btn-image">
+          View images ↗
+        </a>
+        {% endif %}
+      </div>
+      {% if case.image_data %}
+      <img src="/cases/{{ case.id }}/image" alt="Case image — {{ case.title }}" class="case-image">
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Clinician ID ── -->
+    <div class="clinician-bar">
+      <label for="clinician_id">Your clinician ID</label>
+      <input
+        type="text"
+        id="clinician_id"
+        name="clinician_id"
+        placeholder="e.g. DR_SMITH or initials"
+        required
+        autocomplete="username"
+      >
+      <span class="hint">Used to track your submissions — no password required.</span>
+    </div>
+
+    <!-- ── Side-by-side outputs ── -->
+    <input type="hidden" name="output_a_id" value="{{ output_a.id }}">
+    <input type="hidden" name="output_b_id" value="{{ output_b.id }}">
+
+    <div class="outputs-grid">
+      <div class="output-card output-a">
+        <div class="output-card-header">
+          <span class="output-label">Output A</span>
+          <span class="output-model-name">{{ output_a.model_name }}{% if output_a.model_version %} {{ output_a.model_version }}{% endif %}</span>
+        </div>
+        <div class="output-text">{{ output_a.output_text }}</div>
+      </div>
+
+      <div class="output-card output-b">
+        <div class="output-card-header">
+          <span class="output-label">Output B</span>
+          <span class="output-model-name">{{ output_b.model_name }}{% if output_b.model_version %} {{ output_b.model_version }}{% endif %}</span>
+        </div>
+        <div class="output-text">{{ output_b.output_text }}</div>
+      </div>
+    </div>
+
+    <!-- ── Per-axis comparison ── -->
+    <div class="eval-section">
+      <div class="eval-section-head">
+        <h2>Per-axis comparison</h2>
+        <p>For each dimension, select which output performed better.</p>
+      </div>
+      <div class="axis-table">
+
+        <div class="axis-row">
+          <div class="axis-info">
+            <span class="axis-name">Medical accuracy</span>
+            <span class="axis-desc">Reflects medical consensus and guidelines</span>
+          </div>
+          <input type="radio" id="acc_a"   name="axis_accuracy" value="a"   required>
+          <input type="radio" id="acc_tie" name="axis_accuracy" value="tie">
+          <input type="radio" id="acc_b"   name="axis_accuracy" value="b">
+          <div class="axis-opts">
+            <label for="acc_a"   class="axis-opt">Output A</label>
+            <label for="acc_tie" class="axis-opt">Tie</label>
+            <label for="acc_b"   class="axis-opt">Output B</label>
+          </div>
+        </div>
+
+        <div class="axis-row">
+          <div class="axis-info">
+            <span class="axis-name">Completeness</span>
+            <span class="axis-desc">Nothing important missed</span>
+          </div>
+          <input type="radio" id="comp_a"   name="axis_completeness" value="a"   required>
+          <input type="radio" id="comp_tie" name="axis_completeness" value="tie">
+          <input type="radio" id="comp_b"   name="axis_completeness" value="b">
+          <div class="axis-opts">
+            <label for="comp_a"   class="axis-opt">Output A</label>
+            <label for="comp_tie" class="axis-opt">Tie</label>
+            <label for="comp_b"   class="axis-opt">Output B</label>
+          </div>
+        </div>
+
+        <div class="axis-row">
+          <div class="axis-info">
+            <span class="axis-name">Clinical safety</span>
+            <span class="axis-desc">Safe to use in a real clinical setting</span>
+          </div>
+          <input type="radio" id="safe_a"   name="axis_safety" value="a"   required>
+          <input type="radio" id="safe_tie" name="axis_safety" value="tie">
+          <input type="radio" id="safe_b"   name="axis_safety" value="b">
+          <div class="axis-opts">
+            <label for="safe_a"   class="axis-opt">Output A</label>
+            <label for="safe_tie" class="axis-opt">Tie</label>
+            <label for="safe_b"   class="axis-opt">Output B</label>
+          </div>
+        </div>
+
+        <div class="axis-row">
+          <div class="axis-info">
+            <span class="axis-name">Clinical reasoning</span>
+            <span class="axis-desc">Reasoning is sound and well-structured</span>
+          </div>
+          <input type="radio" id="reas_a"   name="axis_reasoning" value="a"   required>
+          <input type="radio" id="reas_tie" name="axis_reasoning" value="tie">
+          <input type="radio" id="reas_b"   name="axis_reasoning" value="b">
+          <div class="axis-opts">
+            <label for="reas_a"   class="axis-opt">Output A</label>
+            <label for="reas_tie" class="axis-opt">Tie</label>
+            <label for="reas_b"   class="axis-opt">Output B</label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Overall 5-point preference ── -->
+    <div class="eval-section">
+      <div class="eval-section-head">
+        <h2>Overall preference</h2>
+        <p>
+          Taking everything into account — which output would you rather have in a real clinical setting?
+          <br>Pair auto-selected: compared {{ pair_count }} time{{ 's' if pair_count != 1 else '' }} so far.
+        </p>
+      </div>
+      <div class="overall-wrap">
+        <input type="radio" id="ov_sa" name="overall_preference" value="strongly_a"  required>
+        <input type="radio" id="ov_la" name="overall_preference" value="slightly_a">
+        <input type="radio" id="ov_t"  name="overall_preference" value="tie">
+        <input type="radio" id="ov_lb" name="overall_preference" value="slightly_b">
+        <input type="radio" id="ov_sb" name="overall_preference" value="strongly_b">
+        <div class="pref-five">
+          <label for="ov_sa">Strongly prefer<br>Output A</label>
+          <label for="ov_la">Slightly prefer<br>Output A</label>
+          <label for="ov_t">No preference<br>(Tie)</label>
+          <label for="ov_lb">Slightly prefer<br>Output B</label>
+          <label for="ov_sb">Strongly prefer<br>Output B</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Submit ── -->
+    <div class="submit-bar">
+      <p>All per-axis ratings and the overall preference are required before submitting.</p>
+      <button type="submit" class="btn-submit">Submit comparison</button>
+    </div>
+
+  </form>
+</div>
+</body>
+</html>

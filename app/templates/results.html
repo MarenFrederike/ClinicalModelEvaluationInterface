@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results — Clinical Model Evaluation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a2233;
+      min-height: 100vh;
+    }
+
+header {
+      background: #1a2233;
+      color: #fff;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header .subtitle { font-size: 0.78rem; opacity: 0.45; }
+    header nav { margin-left: auto; display: flex; gap: 0.25rem; }
+    header nav a {
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: rgba(255,255,255,0.55);
+      transition: background 0.1s, color 0.1s;
+    }
+    header nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    header nav a.active { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    .stat-card .label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 0.4rem;
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1a2233;
+      line-height: 1;
+    }
+    .stat-card .value.flagged { color: #dc2626; }
+    .stat-card .value.complete { color: #059669; }
+
+    /* ── Section header ── */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Case block ── */
+    .case-block {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+
+    .case-block-header {
+      padding: 1rem 1.5rem;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .case-block-header strong { font-size: 0.95rem; flex: 1; }
+    .case-block-header .patient {
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-ct    { background: #dbeafe; color: #1d4ed8; }
+    .badge-mri   { background: #ede9fe; color: #6d28d9; }
+    .badge-xray  { background: #fef3c7; color: #92400e; }
+    .badge-us    { background: #d1fae5; color: #065f46; }
+    .badge-other { background: #f3f4f6; color: #374151; }
+    .badge-queued    { background: #fef3c7; color: #92400e; }
+    .badge-evaluated { background: #d1fae5; color: #065f46; }
+
+    /* ── Output table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #6b7280;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .rating-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+    .r1 { background: #fee2e2; color: #991b1b; }
+    .r2 { background: #fef3c7; color: #92400e; }
+    .r3 { background: #fef9c3; color: #713f12; }
+    .r4 { background: #d1fae5; color: #065f46; }
+    .r5 { background: #a7f3d0; color: #064e3b; }
+    .r-none { background: #f3f4f6; color: #9ca3af; font-weight: 400; font-size: 0.78rem; }
+
+    .flag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    /* ── Eval detail rows ── */
+    details { margin-top: 0.5rem; }
+    summary {
+      cursor: pointer;
+      font-size: 0.78rem;
+      color: #2563eb;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary:hover { text-decoration: underline; }
+
+    .eval-list {
+      margin-top: 0.5rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .eval-row {
+      padding: 0.6rem 0.85rem;
+      font-size: 0.78rem;
+      border-bottom: 1px solid #f3f4f6;
+      display: grid;
+      grid-template-columns: 120px repeat(4, 60px) 1fr;
+      gap: 0.5rem;
+      align-items: start;
+    }
+    .eval-row:last-child { border-bottom: none; }
+    .eval-row .clinician { font-weight: 600; color: #374151; }
+    .eval-row .dim { color: #6b7280; text-align: center; }
+    .eval-row .comment { color: #374151; font-style: italic; }
+    .eval-row.flagged { background: #fff7f7; }
+
+    .no-evals {
+      padding: 1rem 1.5rem;
+      font-size: 0.82rem;
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    /* ── Elo leaderboard ── */
+    .elo-table {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; overflow: hidden; margin-bottom: 2rem;
+    }
+    .elo-header, .elo-row {
+      display: grid;
+      grid-template-columns: 1fr 70px 90px repeat(4, 72px);
+      padding: 0.75rem 1.25rem;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .elo-header {
+      background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase; color: #6b7280;
+    }
+    .elo-row { border-bottom: 1px solid #f3f4f6; font-size: 0.82rem; }
+    .elo-row:last-child { border-bottom: none; }
+    .elo-row.elo-top { background: #f0f7ff; }
+    .elo-model { font-weight: 700; color: #1a2233; }
+    .elo-score { font-weight: 700; font-size: 1rem; color: #2563eb; }
+    .elo-dim { color: #6b7280; text-align: center; font-size: 0.78rem; }
+    .elo-note {
+      padding: 0.6rem 1.25rem; background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.7rem; color: #9ca3af;
+    }
+    @media (max-width: 700px) {
+      .elo-header, .elo-row { grid-template-columns: 1fr 60px repeat(4, 50px); }
+      .elo-header span:nth-child(3), .elo-row span:nth-child(3) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Clinical Model Evaluation Interface</h1>
+  <nav>
+    <a href="/">Cases</a>
+    <a href="/results" class="active">Results</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- ── Summary ── -->
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="label">Total evaluations</div>
+      <div class="value">{{ total_evals }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Cases completed</div>
+      <div class="value complete">{{ cases_complete }} / {{ total_cases }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Outputs flagged</div>
+      <div class="value {% if total_flagged > 0 %}flagged{% endif %}">{{ total_flagged }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Outputs in queue</div>
+      <div class="value">
+        {% set queued = namespace(n=0) %}
+        {% for r in results %}
+          {% for row in r.outputs %}
+            {% if row.output.status == 'queued' %}{% set queued.n = queued.n + 1 %}{% endif %}
+          {% endfor %}
+        {% endfor %}
+        {{ queued.n }}
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Comparisons</div>
+      <div class="value">{{ total_comparisons }}</div>
+    </div>
+  </div>
+
+  <!-- ── Elo leaderboard ── -->
+  {% if elo_rankings %}
+  <p class="section-title">Model ranking — Elo from head-to-head comparisons</p>
+  <div class="elo-table">
+    <div class="elo-header">
+      <span>Model</span>
+      <span>Elo</span>
+      <span>Comparisons</span>
+      <span>Accuracy</span>
+      <span>Completeness</span>
+      <span>Safety</span>
+      <span>Reasoning</span>
+    </div>
+    {% for row in elo_rankings %}
+    <div class="elo-row {% if loop.first %}elo-top{% endif %}">
+      <span class="elo-model">
+        {%- if loop.index == 1 %}#1 {% elif loop.index == 2 %}#2 {% elif loop.index == 3 %}#3 {% endif -%}
+        {{ row.model }}
+      </span>
+      <span class="elo-score">{{ row.elo }}</span>
+      <span class="elo-dim">{{ row.comparisons }}</span>
+      <span class="elo-dim">{{ row.accuracy }}</span>
+      <span class="elo-dim">{{ row.completeness }}</span>
+      <span class="elo-dim">{{ row.safety }}</span>
+      <span class="elo-dim">{{ row.reasoning }}</span>
+    </div>
+    {% endfor %}
+    <div class="elo-note">
+      Elo starts at 1500. Strong preference = full K=32 update; slight preference = half update; tie = no change.
+      Win % per axis shows how often each model was preferred on that dimension.
+    </div>
+  </div>
+  {% endif %}
+
+  <p class="section-title">Per-case breakdown</p>
+
+  {% for r in results %}
+  {% set case = r.case %}
+  <div class="case-block">
+
+    <div class="case-block-header">
+      {% set m = case.modality | lower %}
+      {% if 'ct' in m %}<span class="badge badge-ct">CT</span>
+      {% elif 'mri' in m %}<span class="badge badge-mri">MRI</span>
+      {% elif 'x-ray' in m or 'xray' in m %}<span class="badge badge-xray">X-ray</span>
+      {% elif 'ultra' in m %}<span class="badge badge-us">US</span>
+      {% else %}<span class="badge badge-other">{{ case.modality }}</span>{% endif %}
+      <strong>{{ case.title }}</strong>
+      {% if case.patient_age or case.patient_sex %}
+      <span class="patient">
+        {% if case.patient_age %}{{ case.patient_age }}y{% endif %}
+        {% if case.patient_sex %} · {{ case.patient_sex }}{% endif %}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if r.outputs %}
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Status</th>
+          <th>Evals</th>
+          <th>Avg rating</th>
+          <th>Accuracy</th>
+          <th>Completeness</th>
+          <th>Clarity</th>
+          <th>Flags</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in r.outputs %}
+        <tr>
+          <td>
+            <strong>{{ row.output.model_name }}</strong>
+            {% if row.output.model_version %}
+            <span style="color:#9ca3af"> {{ row.output.model_version }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge badge-{{ row.output.status }}">{{ row.output.status }}</span>
+          </td>
+          <td>{{ row.n }}</td>
+          <td>
+            {% if row.avg_rating %}
+            {% set r_int = row.avg_rating | round | int %}
+            <span class="rating-pill r{{ r_int }}">{{ row.avg_rating }}</span>
+            {% else %}
+            <span class="rating-pill r-none">—</span>
+            {% endif %}
+          </td>
+          <td>{{ row.avg_accuracy if row.avg_accuracy else '—' }}</td>
+          <td>{{ row.avg_completeness if row.avg_completeness else '—' }}</td>
+          <td>{{ row.avg_clarity if row.avg_clarity else '—' }}</td>
+          <td>
+            {% if row.flags > 0 %}
+            <span class="flag-chip">⚑ {{ row.flags }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if row.evals %}
+            <details>
+              <summary>▸ {{ row.n }} submission{{ 's' if row.n != 1 else '' }}</summary>
+              <div class="eval-list">
+                {% for e in row.evals %}
+                <div class="eval-row {% if e.is_flagged %}flagged{% endif %}">
+                  <span class="clinician">{{ e.clinician_id }}{% if e.is_flagged %} ⚑{% endif %}</span>
+                  <span class="dim" title="Overall">{{ e.rating }}/5</span>
+                  <span class="dim" title="Accuracy">{{ e.accuracy if e.accuracy else '—' }}</span>
+                  <span class="dim" title="Completeness">{{ e.completeness if e.completeness else '—' }}</span>
+                  <span class="dim" title="Clarity">{{ e.clarity if e.clarity else '—' }}</span>
+                  <span class="comment">{{ e.comments if e.comments else '' }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </details>
+            {% else %}
+            <span style="color:#9ca3af;font-size:0.78rem">none yet</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="no-evals">No outputs for this case.</div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+
+</div>
+</body>
+</html>

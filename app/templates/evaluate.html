@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluate — {{ case.title }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a2233;
+      min-height: 100vh;
+    }
+
+header {
+      background: #1a2233;
+      color: #fff;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header .subtitle { font-size: 0.78rem; opacity: 0.45; }
+    header nav { margin-left: auto; display: flex; gap: 0.25rem; }
+    header nav a {
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: rgba(255,255,255,0.55);
+      transition: background 0.1s, color 0.1s;
+    }
+    header nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    header nav a.active { background: rgba(255,255,255,0.14); color: #fff; }
+    header h1 { font-size: 1rem; font-weight: 600; }
+
+    .container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+
+    /* ── Case info ───────────────────────────────────────── */
+    .case-header {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .case-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .case-title { font-size: 1.25rem; font-weight: 700; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-ct    { background: #dbeafe; color: #1d4ed8; }
+    .badge-mri   { background: #ede9fe; color: #6d28d9; }
+    .badge-xray  { background: #fef3c7; color: #92400e; }
+    .badge-us    { background: #d1fae5; color: #065f46; }
+    .badge-other { background: #f3f4f6; color: #374151; }
+
+    .prompt-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 0.4rem;
+    }
+    .prompt-text {
+      font-size: 0.92rem;
+      line-height: 1.65;
+      color: #374151;
+    }
+
+    /* ── Image viewer ────────────────────────────────────── */
+    .image-section {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .image-section .image-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .image-section .image-icon {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    .image-section .image-info { flex: 1; }
+    .image-section .image-info p {
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-top: 0.2rem;
+    }
+    .case-image {
+      width: 100%;
+      max-height: 480px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #000;
+      display: block;
+      margin-top: 0.75rem;
+    }
+    .btn-image {
+      display: inline-block;
+      padding: 0.55rem 1.2rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      background: #f3f4f6;
+      color: #1a2233;
+      border: 1px solid #d1d5db;
+      white-space: nowrap;
+    }
+    .btn-image:hover { background: #e5e7eb; }
+
+    /* ── Clinician ID ────────────────────────────────────── */
+    .clinician-bar {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .clinician-bar label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .clinician-bar input {
+      flex: 1;
+      min-width: 180px;
+      max-width: 320px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .clinician-bar input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+    .clinician-bar .hint {
+      font-size: 0.78rem;
+      color: #9ca3af;
+    }
+
+    /* ── Output panel ────────────────────────────────────── */
+    .outputs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .output-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .output-card-header {
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0.85rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .output-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: #1a2233;
+      color: #fff;
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+    }
+    .output-model-name { font-size: 0.82rem; color: #6b7280; }
+
+    .output-text {
+      padding: 1.25rem;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: #374151;
+      white-space: pre-wrap;
+      max-height: 320px;
+      overflow-y: auto;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+
+    .rating-section {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      flex: 1;
+    }
+
+    .rating-row { display: flex; flex-direction: column; gap: 0.35rem; }
+    .rating-row label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #374151;
+    }
+    .rating-row label span { font-weight: 400; color: #9ca3af; }
+
+    .stars {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .stars input[type="radio"] { display: none; }
+    .stars label {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #6b7280;
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s, color 0.1s;
+    }
+    .stars input[type="radio"]:checked + label {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    .stars label:hover { border-color: #2563eb; color: #2563eb; }
+
+    .scale-hints {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: #9ca3af;
+      margin-top: 0.15rem;
+    }
+
+    .flag-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .flag-row input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: #dc2626;
+      cursor: pointer;
+    }
+    .flag-row label {
+      font-size: 0.82rem;
+      color: #dc2626;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 72px;
+    }
+    textarea:focus { outline: 2px solid #2563eb; border-color: transparent; }
+
+    /* ── Submit bar ──────────────────────────────────────── */
+    .submit-bar {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .submit-bar p { font-size: 0.82rem; color: #6b7280; }
+    .btn-submit {
+      padding: 0.7rem 2rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>{{ case.title }}</h1>
+  <nav>
+    <a href="/" class="active">Cases</a>
+    <a href="/results">Results</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <form method="post" action="/evaluations/single/{{ output.id }}">
+
+    <!-- ── Case info ── -->
+    <div class="case-header">
+      <div class="case-meta">
+        {% set m = case.modality | lower %}
+        {% if 'ct' in m %}
+          <span class="badge badge-ct">CT</span>
+        {% elif 'mri' in m or 'mr' == m %}
+          <span class="badge badge-mri">MRI</span>
+        {% elif 'x-ray' in m or 'xray' in m %}
+          <span class="badge badge-xray">X-ray</span>
+        {% elif 'ultra' in m or m == 'us' %}
+          <span class="badge badge-us">Ultrasound</span>
+        {% else %}
+          <span class="badge badge-other">{{ case.modality }}</span>
+        {% endif %}
+        <span class="case-title">{{ case.title }}</span>
+      </div>
+      <p class="prompt-label">Clinical prompt</p>
+      <p class="prompt-text">{{ case.clinical_prompt }}</p>
+    </div>
+
+    <!-- ── Image viewer ── -->
+    {% if case.image_data or case.image_path %}
+    <div class="image-section">
+      <div class="image-header">
+        <div class="image-icon">🏥</div>
+        <div class="image-info">
+          <strong style="font-size:0.88rem;">Case images</strong>
+          {% if case.image_data %}
+          <p>Representative image from the model training dataset.</p>
+          {% else %}
+          <p>Opens the interactive Radiopaedia viewer in a new tab.</p>
+          {% endif %}
+        </div>
+        {% if case.image_path %}
+        <a href="{{ case.image_path }}" target="_blank" rel="noopener" class="btn-image">
+          View images ↗
+        </a>
+        {% endif %}
+      </div>
+      {% if case.image_data %}
+      <img src="/cases/{{ case.id }}/image" alt="Case image — {{ case.title }}" class="case-image">
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Clinician ID ── -->
+    <div class="clinician-bar">
+      <label for="clinician_id">Your clinician ID</label>
+      <input
+        type="text"
+        id="clinician_id"
+        name="clinician_id"
+        placeholder="e.g. DR_SMITH or initials"
+        required
+        autocomplete="username"
+      >
+      <span class="hint">Used to track your submissions — no password required.</span>
+    </div>
+
+    <!-- ── Model output ── -->
+    <div class="outputs-grid">
+      <div class="output-card">
+
+        <div class="output-card-header">
+          <span class="output-label">{{ output.model_name }}{% if output.model_version %} {{ output.model_version }}{% endif %}</span>
+          <span class="output-model-name">Single evaluation</span>
+        </div>
+
+        <div class="output-text">{{ output.output_text }}</div>
+
+        <div class="rating-section">
+
+          <!-- Overall rating -->
+          <div class="rating-row">
+            <label>Overall quality <span>(required)</span></label>
+            <div class="stars">
+              {% for v in [1,2,3,4,5] %}
+              <input type="radio" id="r{{ v }}" name="rating" value="{{ v }}" required>
+              <label for="r{{ v }}">{{ v }}</label>
+              {% endfor %}
+            </div>
+            <div class="scale-hints"><span>1 = Unacceptable</span><span>5 = Excellent</span></div>
+          </div>
+
+          <!-- Accuracy -->
+          <div class="rating-row">
+            <label>Clinical accuracy <span>(optional)</span></label>
+            <div class="stars">
+              {% for v in [1,2,3,4,5] %}
+              <input type="radio" id="a{{ v }}" name="accuracy" value="{{ v }}">
+              <label for="a{{ v }}">{{ v }}</label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Completeness -->
+          <div class="rating-row">
+            <label>Completeness <span>(optional)</span></label>
+            <div class="stars">
+              {% for v in [1,2,3,4,5] %}
+              <input type="radio" id="c{{ v }}" name="completeness" value="{{ v }}">
+              <label for="c{{ v }}">{{ v }}</label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Clarity -->
+          <div class="rating-row">
+            <label>Clarity of language <span>(optional)</span></label>
+            <div class="stars">
+              {% for v in [1,2,3,4,5] %}
+              <input type="radio" id="l{{ v }}" name="clarity" value="{{ v }}">
+              <label for="l{{ v }}">{{ v }}</label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Comments -->
+          <div class="rating-row">
+            <label>Comments <span>(optional)</span></label>
+            <textarea
+              name="comments"
+              placeholder="Specific errors, omissions, or suggestions…"
+            ></textarea>
+          </div>
+
+          <!-- Flag -->
+          <div class="flag-row">
+            <input type="checkbox" id="flagged" name="flagged" value="1">
+            <label for="flagged">⚑ Flag — serious error or unsafe output</label>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Submit ── -->
+    <div class="submit-bar">
+      <p>Overall quality rating is required before submitting.</p>
+      <button type="submit" class="btn-submit">Submit evaluation</button>
+    </div>
+
+  </form>
+</div>
+</body>
+</html>

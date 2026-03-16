@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinical Model Evaluation Interface</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a2233;
+      min-height: 100vh;
+    }
+
+header {
+      background: #1a2233;
+      color: #fff;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+    header .subtitle { font-size: 0.78rem; opacity: 0.45; }
+    header nav { margin-left: auto; display: flex; gap: 0.25rem; }
+    header nav a {
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: rgba(255,255,255,0.55);
+      transition: background 0.1s, color 0.1s;
+    }
+    header nav a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    header nav a.active { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .container { max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem; }
+
+    .banner {
+      background: #d1fae5;
+      border: 1px solid #6ee7b7;
+      color: #065f46;
+      padding: 0.85rem 1.2rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+
+    .case-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .case-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      transition: box-shadow 0.15s;
+    }
+    .case-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); }
+
+    .case-card .meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .case-card .case-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .case-card .prompt-preview {
+      font-size: 0.82rem;
+      color: #6b7280;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-ct    { background: #dbeafe; color: #1d4ed8; }
+    .badge-mri   { background: #ede9fe; color: #6d28d9; }
+    .badge-xray  { background: #fef3c7; color: #92400e; }
+    .badge-us    { background: #d1fae5; color: #065f46; }
+    .badge-other { background: #f3f4f6; color: #374151; }
+
+    .eval-count {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .eval-count.has-evals { color: #059669; }
+
+    .btn {
+      display: inline-block;
+      padding: 0.55rem 1.2rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: #fff;
+      color: #374151;
+      border: 1.5px solid #d1d5db;
+    }
+    .btn-secondary:hover { background: #f3f4f6; border-color: #9ca3af; }
+
+    .card-actions { display: flex; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Clinical Model Evaluation Interface</h1>
+  <span class="subtitle">DECIPHER-M · SP3</span>
+  <nav>
+    <a href="/" class="active">Cases</a>
+    <a href="/results">Results</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  {% if done %}
+  <div class="banner">
+    ✓ Evaluation submitted for case #{{ done }}. Thank you.
+  </div>
+  {% endif %}
+
+  <p class="section-title">{{ cases | length }} cases available</p>
+
+  {% if cases %}
+  <div class="case-grid">
+    {% for case in cases %}
+    {% set modality_key = case.modality | lower | replace('-', '') | replace(' ', '') %}
+    <div class="case-card">
+
+      {% if 'ct' in modality_key %}
+        <span class="badge badge-ct">CT</span>
+      {% elif 'mri' in modality_key or 'mr' in modality_key %}
+        <span class="badge badge-mri">MRI</span>
+      {% elif 'xray' in modality_key or 'x-ray' in modality_key or 'xr' in modality_key %}
+        <span class="badge badge-xray">X-ray</span>
+      {% elif 'ultra' in modality_key or 'us' == modality_key %}
+        <span class="badge badge-us">US</span>
+      {% else %}
+        <span class="badge badge-other">{{ case.modality }}</span>
+      {% endif %}
+
+      <div class="meta">
+        <div class="case-title">{{ case.title }}</div>
+        <div class="prompt-preview">{{ case.clinical_prompt }}</div>
+      </div>
+
+      {% set count = eval_counts.get(case.id, 0) %}
+      <span class="eval-count {% if count > 0 %}has-evals{% endif %}">
+        {{ count }} evaluation{{ 's' if count != 1 else '' }}
+      </span>
+
+      <div class="card-actions">
+        <a href="/cases/{{ case.id }}/evaluate" class="btn btn-secondary">Rate</a>
+        <a href="/cases/{{ case.id }}/compare" class="btn btn-primary">Compare ↔</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No cases loaded.</div>
+  {% endif %}
+
+</div>
+</body>
+</html>
