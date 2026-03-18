@@ -21,6 +21,7 @@ def submit_single_evaluation(
     clarity: Optional[int] = Form(default=None),
     comments: Optional[str] = Form(default=None),
     flagged: Optional[str] = Form(default=None),
+    marked_regions: Optional[str] = Form(default=None),
 ):
     output = db.query(ModelOutput).filter(ModelOutput.id == output_id).first()
     if not output:
@@ -37,6 +38,7 @@ def submit_single_evaluation(
         clarity=clarity,
         comments=comments.strip() if comments else None,
         is_flagged=flagged is not None,
+        marked_regions=marked_regions if marked_regions and marked_regions != "[]" else None,
     ))
     output.status = "evaluated"
     db.commit()

@@ -83,10 +83,39 @@
     .image-icon { font-size: 1.8rem; line-height: 1; }
     .image-info { flex: 1; }
     .image-info p { font-size: 0.82rem; color: #6b7280; margin-top: 0.2rem; }
-    .case-image {
-      width: 100%; max-height: 400px; object-fit: contain;
-      border-radius: 6px; background: #000; display: block; margin-top: 0.75rem;
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      margin-top: 0.75rem;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      line-height: 0;
     }
+    .canvas-wrap canvas { display: block; width: 100%; height: auto; }
+    .canvas-legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      border: 2px solid currentColor;
+      flex-shrink: 0;
+    }
+    .legend-swatch.blue  { color: #2563eb; }
+    .legend-swatch.green { color: #16a34a; }
     .btn-image {
       display: inline-block; padding: 0.55rem 1.2rem;
       border-radius: 7px; font-size: 0.85rem; font-weight: 600;
@@ -294,7 +323,17 @@
         {% endif %}
       </div>
       {% if case.image_data %}
-      <img src="/cases/{{ case.id }}/image" alt="Case image — {{ case.title }}" class="case-image">
+      <div class="canvas-wrap">
+        <canvas id="cmp-canvas"></canvas>
+      </div>
+      <div class="canvas-legend">
+        <span class="legend-item">
+          <span class="legend-swatch blue"></span>Output A attention regions
+        </span>
+        <span class="legend-item">
+          <span class="legend-swatch green"></span>Output B attention regions
+        </span>
+      </div>
       {% endif %}
     </div>
     {% endif %}
@@ -439,5 +478,54 @@
 
   </form>
 </div>
+{% if case.image_data %}
+<script>
+(function () {
+  const canvas = document.getElementById('cmp-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const boxesA = {{ output_a.bounding_boxes | safe if output_a.bounding_boxes else '[]' }};
+  const boxesB = {{ output_b.bounding_boxes | safe if output_b.bounding_boxes else '[]' }};
+
+  const img = new Image();
+  img.src = '/cases/{{ case.id }}/image';
+  img.onload = function () {
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+
+    ctx.font = 'bold ' + Math.max(11, Math.round(canvas.width * 0.012)) + 'px sans-serif';
+
+    for (const box of boxesA) drawBox(box, '#2563eb');
+    for (const box of boxesB) drawBox(box, '#16a34a');
+  };
+
+  function drawBox(box, colour) {
+    const x = box.x * canvas.width,  y = box.y * canvas.height;
+    const w = box.w * canvas.width,  h = box.h * canvas.height;
+    const lw = Math.max(1.5, canvas.width * 0.002);
+    const label = box.label + ' (' + Math.round(box.confidence * 100) + '%)';
+
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth   = lw;
+    ctx.strokeRect(x, y, w, h);
+
+    const pad = 4, th = parseInt(ctx.font), bh = th + pad * 2;
+    const tw  = ctx.measureText(label).width;
+    const by  = y > bh + 2 ? y - bh : y + h;
+    ctx.fillStyle  = colour;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x, by, tw + pad * 2, bh);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, x + pad, by + th + pad - 2);
+    ctx.restore();
+  }
+})();
+</script>
+{% endif %}
+
 </body>
 </html>

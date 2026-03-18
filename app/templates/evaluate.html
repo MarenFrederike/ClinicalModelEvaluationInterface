@@ -109,15 +109,63 @@ header {
       color: #6b7280;
       margin-top: 0.2rem;
     }
-    .case-image {
+    .canvas-wrap {
+      position: relative;
       width: 100%;
-      max-height: 480px;
-      object-fit: contain;
-      border-radius: 6px;
-      background: #000;
-      display: block;
       margin-top: 0.75rem;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: crosshair;
+      line-height: 0;
     }
+    .canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .canvas-legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      border: 2px solid currentColor;
+      flex-shrink: 0;
+    }
+    .legend-swatch.amber { color: #f59e0b; }
+    .legend-swatch.red   { color: #ef4444; }
+    .btn-clear-canvas {
+      padding: 0.35rem 0.85rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #f9fafb;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-clear-canvas:hover { background: #e5e7eb; }
     .btn-image {
       display: inline-block;
       padding: 0.55rem 1.2rem;
@@ -373,7 +421,21 @@ header {
         {% endif %}
       </div>
       {% if case.image_data %}
-      <img src="/cases/{{ case.id }}/image" alt="Case image — {{ case.title }}" class="case-image">
+      <div class="canvas-wrap">
+        <canvas id="eval-canvas"></canvas>
+      </div>
+      <input type="hidden" name="marked_regions" id="marked_regions_input" value="[]">
+      <div class="canvas-toolbar">
+        <div class="canvas-legend">
+          <span class="legend-item">
+            <span class="legend-swatch amber"></span>Model attention regions
+          </span>
+          <span class="legend-item">
+            <span class="legend-swatch red"></span>Your marked regions (draw by clicking and dragging)
+          </span>
+        </div>
+        <button type="button" class="btn-clear-canvas" id="clear-regions">Clear my regions</button>
+      </div>
       {% endif %}
     </div>
     {% endif %}
@@ -477,5 +539,138 @@ header {
 
   </form>
 </div>
+{% if case.image_data %}
+<script>
+(function () {
+  const canvas  = document.getElementById('eval-canvas');
+  const ctx     = canvas.getContext('2d');
+  const input   = document.getElementById('marked_regions_input');
+  const clearBtn = document.getElementById('clear-regions');
+
+  const modelBoxes     = {{ output.bounding_boxes | safe if output.bounding_boxes else '[]' }};
+  const evaluatorBoxes = [];
+
+  const img = new Image();
+  img.src   = '/cases/{{ case.id }}/image';
+
+  img.onload = function () {
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    redraw();
+  };
+
+  function redraw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    ctx.font = 'bold ' + Math.max(11, Math.round(canvas.width * 0.012)) + 'px sans-serif';
+
+    // Model attention boxes — amber
+    for (const box of modelBoxes) {
+      drawBox(box.x, box.y, box.w, box.h, '#f59e0b',
+              box.label + ' (' + Math.round(box.confidence * 100) + '%)');
+    }
+
+    // Evaluator boxes — red
+    for (const box of evaluatorBoxes) {
+      drawBox(box.x, box.y, box.w, box.h, '#ef4444', null);
+    }
+
+    // Live drag preview
+    if (drawing) {
+      const nx = (curW < 0 ? startX + curW : startX) / canvas.width;
+      const ny = (curH < 0 ? startY + curH : startY) / canvas.height;
+      ctx.save();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth   = Math.max(1.5, canvas.width * 0.002);
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(nx * canvas.width, ny * canvas.height,
+                     Math.abs(curW),     Math.abs(curH));
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  function drawBox(nx, ny, nw, nh, colour, label) {
+    const x = nx * canvas.width,  y = ny * canvas.height;
+    const w = nw * canvas.width,  h = nh * canvas.height;
+    const lw = Math.max(1.5, canvas.width * 0.002);
+
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineWidth   = lw;
+    ctx.strokeRect(x, y, w, h);
+
+    if (label) {
+      const pad    = 4;
+      const tw     = ctx.measureText(label).width;
+      const th     = parseInt(ctx.font);
+      const bh     = th + pad * 2;
+      const by     = y > bh + 2 ? y - bh : y + h;
+      ctx.fillStyle = colour;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x, by, tw + pad * 2, bh);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, x + pad, by + th + pad - 2);
+    }
+    ctx.restore();
+  }
+
+  // ── Mouse interaction ──────────────────────────────────
+  let drawing = false, startX = 0, startY = 0, curW = 0, curH = 0;
+
+  function canvasPos(e) {
+    const r  = canvas.getBoundingClientRect();
+    const sx = canvas.width  / r.width;
+    const sy = canvas.height / r.height;
+    return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy];
+  }
+
+  canvas.addEventListener('mousedown', function (e) {
+    [startX, startY] = canvasPos(e);
+    curW = 0; curH = 0;
+    drawing = true;
+    e.preventDefault();
+  });
+
+  canvas.addEventListener('mousemove', function (e) {
+    if (!drawing) return;
+    const [cx, cy] = canvasPos(e);
+    curW = cx - startX;
+    curH = cy - startY;
+    redraw();
+  });
+
+  canvas.addEventListener('mouseup', function (e) {
+    if (!drawing) return;
+    drawing = false;
+    const [ex, ey] = canvasPos(e);
+    const w = ex - startX, h = ey - startY;
+    if (Math.abs(w) > 4 && Math.abs(h) > 4) {
+      evaluatorBoxes.push({
+        x: (w < 0 ? ex   : startX) / canvas.width,
+        y: (h < 0 ? ey   : startY) / canvas.height,
+        w: Math.abs(w)             / canvas.width,
+        h: Math.abs(h)             / canvas.height,
+      });
+      input.value = JSON.stringify(evaluatorBoxes);
+    }
+    redraw();
+  });
+
+  canvas.addEventListener('mouseleave', function () {
+    if (drawing) { drawing = false; redraw(); }
+  });
+
+  clearBtn.addEventListener('click', function () {
+    evaluatorBoxes.length = 0;
+    input.value = '[]';
+    redraw();
+  });
+})();
+</script>
+{% endif %}
+
 </body>
 </html>

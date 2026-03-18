@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from app.database import engine, SessionLocal
 from app.models import Base
@@ -21,8 +20,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Clinical Model Evaluation Interface", lifespan=lifespan)
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(cases.router)
 app.include_router(evaluations.router)

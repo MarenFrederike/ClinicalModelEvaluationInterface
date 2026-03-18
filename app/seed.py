@@ -5,6 +5,7 @@ Each case gets two AI model outputs so clinicians have something to compare and 
 Key images are downloaded from the Radiopaedia CDN and stored as BLOB in the database.
 """
 
+import json
 import urllib.request
 from typing import Optional
 
@@ -120,6 +121,12 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.52, "y": 0.42, "w": 0.28, "h": 0.32, "label": "Retroperitoneal mass",    "confidence": 0.94},
+                {"x": 0.62, "y": 0.35, "w": 0.12, "h": 0.18, "label": "Ureteric involvement",    "confidence": 0.87},
+                {"x": 0.65, "y": 0.13, "w": 0.16, "h": 0.12, "label": "Pulmonary metastasis",    "confidence": 0.81},
+                {"x": 0.36, "y": 0.55, "w": 0.10, "h": 0.08, "label": "Peritoneal deposit",      "confidence": 0.76},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Retroperitoneum: There is a progressive heterogeneous, predominantly hypodense "
@@ -148,9 +155,14 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.53, "y": 0.43, "w": 0.27, "h": 0.31, "label": "Retroperitoneal mass",    "confidence": 0.92},
+                {"x": 0.63, "y": 0.36, "w": 0.11, "h": 0.17, "label": "Ureteric involvement",    "confidence": 0.85},
+                {"x": 0.66, "y": 0.14, "w": 0.15, "h": 0.11, "label": "Pulmonary metastasis",    "confidence": 0.79},
+            ],
             "output_text": (
                 "FINDINGS:\n"
-                "Retroperitoneum: Progressive enlargement of right retroperitoneal heterogeneous "
+                "Progressive enlargement of right retroperitoneal heterogeneous "
                 "hypodense mass with internal calcifications. New circumferential encasement of "
                 "the right ureter extending to the renal pelvis causing mild hydronephrosis. "
                 "Close relationship with the IVC noted.\n\n"
@@ -170,6 +182,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.52, "y": 0.40, "w": 0.22, "h": 0.18, "label": "Insular ribbon sign",  "confidence": 0.91},
+                {"x": 0.54, "y": 0.34, "w": 0.14, "h": 0.06, "label": "Dense MCA sign",       "confidence": 0.96},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "There is subtle hypoattenuation of the right insular cortex and adjacent "
@@ -191,6 +207,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.52, "y": 0.41, "w": 0.21, "h": 0.17, "label": "Insular ribbon sign",  "confidence": 0.89},
+                {"x": 0.54, "y": 0.34, "w": 0.13, "h": 0.05, "label": "Dense MCA sign",       "confidence": 0.94},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Subtle right insular ribbon sign with early hypoattenuation and sulcal "
@@ -208,6 +228,12 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.12, "y": 0.10, "w": 0.35, "h": 0.30, "label": "Left upper lobe mass",    "confidence": 0.97},
+                {"x": 0.08, "y": 0.45, "w": 0.38, "h": 0.35, "label": "Pleural effusion",        "confidence": 0.93},
+                {"x": 0.05, "y": 0.28, "w": 0.12, "h": 0.10, "label": "Axillary lymph node",     "confidence": 0.82},
+                {"x": 0.72, "y": 0.68, "w": 0.08, "h": 0.07, "label": "Contralateral nodule",    "confidence": 0.71},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Left upper lobe: Large heterogeneous soft tissue mass in the apicoposterior "
@@ -234,6 +260,11 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.12, "y": 0.10, "w": 0.34, "h": 0.29, "label": "Left upper lobe mass",    "confidence": 0.96},
+                {"x": 0.08, "y": 0.46, "w": 0.37, "h": 0.34, "label": "Pleural effusion",        "confidence": 0.91},
+                {"x": 0.38, "y": 0.28, "w": 0.16, "h": 0.12, "label": "Mediastinal lymph node",  "confidence": 0.78},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Large left apicoposterior upper lobe mass (~10.5 × 8 cm) with chest wall "
@@ -256,6 +287,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.33, "y": 0.53, "w": 0.22, "h": 0.16, "label": "Trigeminal nerve REZ",      "confidence": 0.88},
+                {"x": 0.35, "y": 0.55, "w": 0.18, "h": 0.12, "label": "AICA-trigeminal contact",   "confidence": 0.85},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Trigeminal nerves: On dedicated thin-section CISS sequences, the cisternal "
@@ -280,6 +315,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.35, "y": 0.56, "w": 0.17, "h": 0.11, "label": "AICA-trigeminal contact",   "confidence": 0.86},
+                {"x": 0.40, "y": 0.30, "w": 0.25, "h": 0.20, "label": "White matter disease",      "confidence": 0.72},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "CISS sequences demonstrate contact between the AICA and the left trigeminal "
@@ -301,6 +340,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.38, "y": 0.22, "w": 0.24, "h": 0.28, "label": "Subglottic narrowing",  "confidence": 0.95},
+                {"x": 0.42, "y": 0.25, "w": 0.16, "h": 0.22, "label": "Steeple sign region",   "confidence": 0.90},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Upper airway: Frontal radiograph demonstrates symmetric tapering of the "
@@ -324,6 +367,10 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.38, "y": 0.22, "w": 0.23, "h": 0.27, "label": "Subglottic narrowing",  "confidence": 0.93},
+                {"x": 0.43, "y": 0.26, "w": 0.14, "h": 0.20, "label": "Narrowing apex",        "confidence": 0.88},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Subglottic tracheal narrowing with steeple/inverted-V sign on frontal view. "
@@ -342,6 +389,12 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v1",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.22, "y": 0.12, "w": 0.52, "h": 0.45, "label": "Hepatomegaly / haemangiomas",  "confidence": 0.96},
+                {"x": 0.22, "y": 0.30, "w": 0.20, "h": 0.18, "label": "Exophytic lesion (seg 3)",     "confidence": 0.89},
+                {"x": 0.55, "y": 0.35, "w": 0.10, "h": 0.30, "label": "Compressed IVC",               "confidence": 0.82},
+                {"x": 0.15, "y": 0.60, "w": 0.65, "h": 0.28, "label": "Ascites",                      "confidence": 0.94},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Liver: Marked hepatomegaly with extensive bilateral hypoattenuating lesions "
@@ -367,6 +420,11 @@ OUTPUTS = {
         {
             "model_name": "DECIPHER-M", "model_version": "v2",
             "output_type": "report",
+            "bounding_boxes": [
+                {"x": 0.22, "y": 0.12, "w": 0.51, "h": 0.44, "label": "Hepatomegaly / haemangiomas",  "confidence": 0.95},
+                {"x": 0.23, "y": 0.31, "w": 0.18, "h": 0.17, "label": "Exophytic lesion (seg 3)",     "confidence": 0.87},
+                {"x": 0.16, "y": 0.61, "w": 0.63, "h": 0.27, "label": "Ascites",                      "confidence": 0.93},
+            ],
             "output_text": (
                 "FINDINGS:\n"
                 "Massive hepatomegaly with bilateral hypodense haemangiomatous lesions. "
@@ -416,6 +474,7 @@ def seed(db: Session) -> None:
                 output_type=output_data["output_type"],
                 output_text=output_data["output_text"],
                 status="queued",
+                bounding_boxes=json.dumps(output_data["bounding_boxes"]),
             )
             db.add(output)
 

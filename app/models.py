@@ -45,6 +45,8 @@ class ModelOutput(Base):
     # Queue status — the pipeline sets this to 'queued'; flipped to 'evaluated' on first submission
     status: Mapped[str] = mapped_column(String(20), default="queued", nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # JSON list of {x,y,w,h,label,confidence} in normalised [0-1] coords — regions the model attended to
+    bounding_boxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     case: Mapped["Case"] = relationship("Case", back_populates="outputs")
     evaluations: Mapped[list["Evaluation"]] = relationship("Evaluation", back_populates="output")
@@ -70,6 +72,8 @@ class Evaluation(Base):
     comments: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Flag for serious errors (hallucinations, dangerous omissions)
     is_flagged: Mapped[bool] = mapped_column(Boolean, default=False)
+    # JSON list of {x,y,w,h} in normalised [0-1] coords — evaluator-drawn regions of interest
+    marked_regions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     output: Mapped["ModelOutput"] = relationship("ModelOutput", back_populates="evaluations")
