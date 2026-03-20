@@ -58,7 +58,7 @@ A web-based tool for clinicians to evaluate AI-generated radiology reports. Buil
 The only prerequisite is [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/MarenFrederike/ClinicalModelEvaluationInterface.git
 cd ClinicalModelEvaluationInterface
 docker compose up
 ```
