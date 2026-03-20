@@ -265,6 +265,38 @@
       font-weight: 700; cursor: pointer; transition: background 0.15s;
     }
     .btn-submit:hover { background: #1d4ed8; }
+
+    .submit-buttons {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .btn-action {
+      padding: 0.65rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-next {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-next:hover { background: #059669; }
+    .btn-exit {
+      background: #2563eb;
+      color: #fff;
+    }
+    .btn-exit:hover { background: #1d4ed8; }
+    .btn-disregard {
+      background: #ef4444;
+      color: #fff;
+    }
+    .btn-disregard:hover { background: #dc2626; }
   </style>
 </head>
 <body>
@@ -473,11 +505,44 @@
     <!-- ── Submit ── -->
     <div class="submit-bar">
       <p>All per-axis ratings and the overall preference are required before submitting.</p>
-      <button type="submit" class="btn-submit">Submit comparison</button>
+      <input type="hidden" name="action" id="action-input" value="exit">
+      <div class="submit-buttons">
+        <button type="submit" class="btn-action btn-next" onclick="setAction('next')">✓ Submit & Next comparison</button>
+        <button type="submit" class="btn-action btn-exit" onclick="setAction('exit')">↗ Submit & Exit</button>
+        <button type="button" class="btn-action btn-disregard" onclick="discardAndExit()">✕ Disregard & Exit</button>
+      </div>
     </div>
 
   </form>
 </div>
+
+<!-- ── Comparison form actions ── -->
+<script>
+(function () {
+  window.setAction = function(action) {
+    document.getElementById('action-input').value = action;
+  };
+
+  window.discardAndExit = function() {
+    if (confirm('Discard this comparison without submitting?')) {
+      window.location.href = '/';
+    }
+  };
+
+  // Handle form submission for "next" action
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const action = document.getElementById('action-input').value;
+      if (action === 'next') {
+        // After successful submission, we'll reload the comparison page
+        // This is handled by a special response from the server
+      }
+    });
+  }
+})();
+</script>
+
 {% if case.image_data %}
 <script>
 (function () {

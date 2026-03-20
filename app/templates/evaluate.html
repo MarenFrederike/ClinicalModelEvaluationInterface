@@ -258,7 +258,111 @@ header {
       overflow-y: auto;
       border-bottom: 1px solid #e5e7eb;
       flex-shrink: 0;
+      user-select: text;
+      cursor: text;
     }
+
+    /* ── Text annotation ────────────────────────────────────── */
+    .text-annotation-section {
+      padding: 1rem 1.25rem;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .annotation-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+    .annotation-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+    .annotation-hint {
+      font-size: 0.72rem;
+      color: #9ca3af;
+    }
+    .annotation-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+    .annotation-btn {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .annotation-green {
+      background: #d1fae5;
+      border-color: #6ee7b7;
+      color: #065f46;
+    }
+    .annotation-green:hover { background: #a7f3d0; border-color: #34d399; }
+    .annotation-red {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+    .annotation-red:hover { background: #fecaca; border-color: #f87171; }
+    .annotation-yellow {
+      background: #fef3c7;
+      border-color: #fde047;
+      color: #92400e;
+    }
+    .annotation-yellow:hover { background: #fef08a; border-color: #facc15; }
+    .annotation-clear {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    .annotation-clear:hover { background: #d1d5db; border-color: #9ca3af; }
+    .annotation-list {
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: #374151;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .annotation-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: #fff;
+      border-radius: 4px;
+      border-left: 3px solid #d1d5db;
+    }
+    .annotation-item.green { border-left-color: #10b981; }
+    .annotation-item.red { border-left-color: #ef4444; }
+    .annotation-item.yellow { border-left-color: #f59e0b; }
+    .annotation-badge {
+      font-weight: 700;
+      flex-shrink: 0;
+      min-width: 50px;
+    }
+    .annotation-text {
+      flex: 1;
+      font-style: italic;
+      word-break: break-word;
+    }
+    .annotation-remove {
+      font-size: 0.65rem;
+      cursor: pointer;
+      color: #9ca3af;
+      flex-shrink: 0;
+      padding: 0.2rem 0.4rem;
+    }
+    .annotation-remove:hover { color: #dc2626; }
 
     .rating-section {
       padding: 1.25rem;
@@ -463,7 +567,23 @@ header {
           <span class="output-model-name">Single evaluation</span>
         </div>
 
-        <div class="output-text">{{ output.output_text }}</div>
+        <div class="output-text" id="output-text">{{ output.output_text }}</div>
+
+        <!-- ── Text annotation ── -->
+        <div class="text-annotation-section">
+          <div class="annotation-header">
+            <span class="annotation-label">Mark text</span>
+            <span class="annotation-hint">(select text, then click a label)</span>
+          </div>
+          <div class="annotation-buttons">
+            <button type="button" class="annotation-btn annotation-green" id="btn-green" title="Right and important">✓ Correct</button>
+            <button type="button" class="annotation-btn annotation-red" id="btn-red" title="Wrong">✗ Wrong</button>
+            <button type="button" class="annotation-btn annotation-yellow" id="btn-yellow" title="Not wrong but not necessary">⚠ Unnecessary</button>
+            <button type="button" class="annotation-btn annotation-clear" id="btn-clear-highlights" title="Clear all highlights">Clear all</button>
+          </div>
+          <div class="annotation-list" id="highlights-list"></div>
+          <input type="hidden" name="text_highlights" id="text_highlights_input" value="[]">
+        </div>
 
         <div class="rating-section">
 
@@ -539,6 +659,131 @@ header {
 
   </form>
 </div>
+
+<!-- ── Text Annotation Script ── -->
+<script>
+(function () {
+  const outputText = document.getElementById('output-text');
+  const btnGreen = document.getElementById('btn-green');
+  const btnRed = document.getElementById('btn-red');
+  const btnYellow = document.getElementById('btn-yellow');
+  const btnClear = document.getElementById('btn-clear-highlights');
+  const highlightsList = document.getElementById('highlights-list');
+  const highlightsInput = document.getElementById('text_highlights_input');
+
+  let textHighlights = [];
+  let currentSelection = null;
+
+  // Get selected text and character positions
+  function captureSelection() {
+    const sel = window.getSelection();
+    if (sel.toString().length === 0) {
+      currentSelection = null;
+      return false;
+    }
+
+    const range = sel.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(outputText);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    const start = preCaretRange.toString().length - sel.toString().length;
+    const end = start + sel.toString().length;
+
+    currentSelection = {
+      text: sel.toString().trim(),
+      start: start,
+      end: end,
+    };
+    return true;
+  }
+
+  // Add highlight with label
+  function addHighlight(label) {
+    if (!currentSelection || currentSelection.text.length === 0) {
+      alert('Please select text first');
+      return;
+    }
+
+    // Check for duplicates
+    const exists = textHighlights.some(h =>
+      h.start === currentSelection.start && h.end === currentSelection.end
+    );
+    if (exists) {
+      alert('This text is already highlighted');
+      return;
+    }
+
+    textHighlights.push({
+      start: currentSelection.start,
+      end: currentSelection.end,
+      label: label,
+      text: currentSelection.text,
+    });
+
+    currentSelection = null;
+    window.getSelection().removeAllRanges();
+    renderHighlights();
+    saveHighlights();
+  }
+
+  // Render highlights list
+  function renderHighlights() {
+    highlightsList.innerHTML = '';
+    if (textHighlights.length === 0) {
+      highlightsList.innerHTML = '<div style="color:#9ca3af;font-size:0.75rem;">No text highlighted yet</div>';
+      return;
+    }
+
+    textHighlights.forEach((h, idx) => {
+      const item = document.createElement('div');
+      item.className = 'annotation-item ' + h.label;
+      const badgeMap = { green: '✓ Correct', red: '✗ Wrong', yellow: '⚠ Unnecessary' };
+      item.innerHTML = `
+        <span class="annotation-badge">${badgeMap[h.label]}</span>
+        <span class="annotation-text">"${h.text}"</span>
+        <span class="annotation-remove" onclick="window.textAnnotationAPI.remove(${idx})">✕</span>
+      `;
+      highlightsList.appendChild(item);
+    });
+  }
+
+  // Remove highlight
+  function removeHighlight(idx) {
+    textHighlights.splice(idx, 1);
+    renderHighlights();
+    saveHighlights();
+  }
+
+  // Save to hidden input
+  function saveHighlights() {
+    highlightsInput.value = JSON.stringify(textHighlights);
+  }
+
+  // Clear all
+  function clearAll() {
+    if (textHighlights.length === 0) return;
+    if (confirm('Clear all text highlights?')) {
+      textHighlights = [];
+      currentSelection = null;
+      renderHighlights();
+      saveHighlights();
+    }
+  }
+
+  // Event listeners
+  btnGreen.addEventListener('click', (e) => { e.preventDefault(); captureSelection(); addHighlight('green'); });
+  btnRed.addEventListener('click', (e) => { e.preventDefault(); captureSelection(); addHighlight('red'); });
+  btnYellow.addEventListener('click', (e) => { e.preventDefault(); captureSelection(); addHighlight('yellow'); });
+  btnClear.addEventListener('click', (e) => { e.preventDefault(); clearAll(); });
+
+  // Expose API for inline onclick
+  window.textAnnotationAPI = { remove: removeHighlight };
+
+  // Initialize
+  renderHighlights();
+})();
+</script>
+
 {% if case.image_data %}
 <script>
 (function () {

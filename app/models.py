@@ -74,6 +74,8 @@ class Evaluation(Base):
     is_flagged: Mapped[bool] = mapped_column(Boolean, default=False)
     # JSON list of {x,y,w,h} in normalised [0-1] coords — evaluator-drawn regions of interest
     marked_regions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # JSON list of {start,end,label,text} — evaluator-highlighted text with semantic labels (green/red/yellow)
+    text_highlights: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     output: Mapped["ModelOutput"] = relationship("ModelOutput", back_populates="evaluations")

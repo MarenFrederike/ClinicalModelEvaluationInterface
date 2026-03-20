@@ -154,6 +154,44 @@ header {
       color: #9ca3af;
       font-size: 0.9rem;
     }
+
+    /* ── Mode selector ── */
+    .mode-selector {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .mode-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-right: 0.5rem;
+    }
+    .mode-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1.5px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-btn:hover { border-color: #9ca3af; background: #f3f4f6; }
+    .mode-btn.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+    .mode-indicator {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-left: auto;
+    }
   </style>
 </head>
 <body>
@@ -175,7 +213,15 @@ header {
   </div>
   {% endif %}
 
-  <p class="section-title">{{ cases | length }} cases available</p>
+  <!-- ── Mode selector ── -->
+  <div class="mode-selector">
+    <span class="mode-label">Mode:</span>
+    <button type="button" class="mode-btn active" id="mode-rate" onclick="setMode('rate')">Rate Outputs</button>
+    <button type="button" class="mode-btn" id="mode-compare" onclick="startCompare()">Compare Outputs</button>
+    <span class="mode-indicator" id="mode-hint">Show only Rate buttons</span>
+  </div>
+
+  <p class="section-title" id="cases-title">{{ cases | length }} cases available</p>
 
   {% if cases %}
   <div class="case-grid">
@@ -206,8 +252,7 @@ header {
       </span>
 
       <div class="card-actions">
-        <a href="/cases/{{ case.id }}/evaluate" class="btn btn-secondary">Rate</a>
-        <a href="/cases/{{ case.id }}/compare" class="btn btn-primary">Compare ↔</a>
+        <a href="/cases/{{ case.id }}/evaluate" class="btn btn-secondary mode-action" data-mode="rate">Rate</a>
       </div>
     </div>
     {% endfor %}
@@ -217,5 +262,37 @@ header {
   {% endif %}
 
 </div>
+
+<script>
+(function () {
+  let currentMode = 'rate';
+
+  window.setMode = function(mode) {
+    currentMode = mode;
+
+    // Update button active state
+    document.getElementById('mode-rate').classList.toggle('active', mode === 'rate');
+
+    // Update hint text
+    const hint = 'Show only Rate buttons';
+    document.getElementById('mode-hint').textContent = hint;
+
+    // Show/hide action buttons
+    const actions = document.querySelectorAll('.mode-action');
+    actions.forEach(action => {
+      action.style.display = 'inline-block';
+    });
+  };
+
+  window.startCompare = function() {
+    // Go directly to the comparison page
+    window.location.href = '/compare';
+  };
+
+  // Initialize
+  setMode('rate');
+})();
+</script>
+
 </body>
 </html>

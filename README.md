@@ -14,11 +14,12 @@ A web-based tool for clinicians to evaluate AI-generated radiology reports. Buil
 6. [Evaluation Mode 1 — Rate a Single Output](#evaluation-mode-1--rate-a-single-output)
 7. [Evaluation Mode 2 — Head-to-Head Comparison](#evaluation-mode-2--head-to-head-comparison)
 8. [Bounding Box & Region Marking Feature](#bounding-box--region-marking-feature)
-9. [Results & Elo Ranking](#results--elo-ranking)
-10. [Database Schema](#database-schema)
-11. [Seed Data](#seed-data)
-12. [API Routes Reference](#api-routes-reference)
-13. [Important Notes](#important-notes)
+9. [Text Annotation Feature](#text-annotation-feature)
+10. [Results & Elo Ranking](#results--elo-ranking)
+11. [Database Schema](#database-schema)
+12. [Seed Data](#seed-data)
+13. [API Routes Reference](#api-routes-reference)
+14. [Important Notes](#important-notes)
 
 ---
 
@@ -32,6 +33,7 @@ A web-based tool for clinicians to evaluate AI-generated radiology reports. Buil
 | **Smart output selection** | The UI automatically surfaces the least-evaluated output first; compare mode always picks the least-compared pair |
 | **Bounding box overlay** | Model attention regions (which image areas influenced the output) are shown as amber boxes overlaid on the case image |
 | **Evaluator region marking** | Evaluators can draw their own regions of interest directly on the image by clicking and dragging; regions are saved with the evaluation |
+| **Text annotation** | Evaluators can highlight specific text passages in the model output and label them as correct/important (green), wrong (red), or unnecessary (yellow) |
 | **Elo leaderboard** | Head-to-head comparisons drive a live Elo ranking of all models |
 | **Per-axis statistics** | Win percentages for accuracy, completeness, safety, and reasoning quality per model |
 | **Flag system** | Evaluators can flag outputs containing serious errors, hallucinations, or clinically unsafe content |
@@ -225,6 +227,7 @@ The form contains:
 | Completeness | 1–5 radio | No | Whether anything clinically important was missed |
 | Clarity of language | 1–5 radio | No | Readability and appropriate medical language |
 | Comments | Textarea | No | Free text for specific errors, omissions, or suggestions |
+| Text annotations | Interactive | No | Select text and label as correct (green), wrong (red), or unnecessary (yellow) |
 | Flag | Checkbox | No | Marks the output as containing a serious error or unsafe content |
 | Marked regions | Hidden input (JSON) | No | Populated automatically by the canvas drawing tool |
 
@@ -327,6 +330,60 @@ On the comparison page, both model outputs' bounding boxes are overlaid on the s
 - **Green boxes (`#16a34a`)** — Output B attention regions
 
 No drawing is available on the compare page — it is display-only, for context.
+
+---
+
+## Text Annotation Feature
+
+### Motivation
+
+While rating individual model outputs, evaluators need a way to highlight and flag specific text passages that are particularly strong, erroneous, or unnecessary. Text annotations provide fine-grained feedback on report quality — which sentences are accurate and important, which contain errors, and which are superfluous.
+
+### Annotation interface
+
+On the evaluation form, below the model output text, evaluators can:
+
+1. **Select text** by clicking and dragging across words in the output (standard browser text selection)
+2. **Choose a label** by clicking one of three buttons:
+   - **✓ Correct** (green) — text is accurate and clinically important
+   - **✗ Wrong** (red) — text contains an error or is clinically inaccurate
+   - **⚠ Unnecessary** (yellow) — text is not wrong but not clinically necessary
+
+### Stored data
+
+- **Stored in:** `evaluations.text_highlights` — a JSON text column
+- **Format:** `[{"start": 45, "end": 78, "label": "green", "text": "specific words"}, ...]`
+  - `start` and `end` are character indices within the full `output_text`
+  - `label` is one of: `"green"`, `"red"`, `"yellow"`
+  - `text` is the annotated text snippet (for display purposes)
+- **Saved as:** JSON string in the database, parsed and rendered on the results page
+- **Optional:** evaluations with no annotations store `NULL` in this column
+
+### Interactive UI
+
+- **Real-time list:** as evaluators add annotations, they appear in a numbered list with badges and quoted text
+- **Remove individual annotations:** each item has an ✕ button to delete that single annotation
+- **Clear all:** a "Clear all" button removes all annotations at once
+- **Duplicate prevention:** attempting to highlight the same text twice is rejected with an alert
+- **Live preview:** the list updates immediately as annotations are added or removed
+
+### Results display
+
+On the results page, under each evaluation summary, text annotations appear in a collapsible section:
+
+```
+📝 Annotations:
+  ✓ Correct    "retroperitoneal mass measuring approximately..."
+  ✗ Wrong      "hydronephrosis is severe"
+  ⚠ Unnecessary "Age-related changes noted"
+```
+
+Each annotation shows:
+- The colored badge (✓/✗/⚠) matching its label
+- The quoted text snippet
+- Background color matching the label (green/red/yellow)
+
+This allows other clinicians to immediately see which parts of each output were problematic or noteworthy during past evaluations.
 
 ---
 
@@ -435,7 +492,8 @@ The leaderboard table shows: Model | Elo | Comparisons | Accuracy% | Completenes
 | `clarity` | INTEGER | 1–5 language clarity (optional) |
 | `comments` | TEXT | Free-text feedback (optional) |
 | `is_flagged` | BOOLEAN | True if marked as a serious error |
-| `marked_regions` | TEXT | JSON: `[{x,y,w,h}, ...]` (optional) |
+| `marked_regions` | TEXT | JSON: `[{x,y,w,h}, ...]` evaluator-drawn image regions (optional) |
+| `text_highlights` | TEXT | JSON: `[{start,end,label,text}, ...]` annotated text spans (optional) |
 | `submitted_at` | DATETIME | Submission timestamp |
 
 ### `comparison_evaluations`

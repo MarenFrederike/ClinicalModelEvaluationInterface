@@ -22,6 +22,7 @@ def submit_single_evaluation(
     comments: Optional[str] = Form(default=None),
     flagged: Optional[str] = Form(default=None),
     marked_regions: Optional[str] = Form(default=None),
+    text_highlights: Optional[str] = Form(default=None),
 ):
     output = db.query(ModelOutput).filter(ModelOutput.id == output_id).first()
     if not output:
@@ -39,6 +40,7 @@ def submit_single_evaluation(
         comments=comments.strip() if comments else None,
         is_flagged=flagged is not None,
         marked_regions=marked_regions if marked_regions and marked_regions != "[]" else None,
+        text_highlights=text_highlights if text_highlights and text_highlights != "[]" else None,
     ))
     output.status = "evaluated"
     db.commit()
@@ -57,6 +59,7 @@ def submit_comparison(
     axis_safety: str = Form(...),
     axis_reasoning: str = Form(...),
     overall_preference: str = Form(...),
+    action: str = Form(default="exit"),
 ):
     if not db.query(ModelOutput).filter(ModelOutput.id == output_a_id).first():
         raise HTTPException(status_code=404, detail="Output A not found")
@@ -82,4 +85,11 @@ def submit_comparison(
         overall_preference=overall_preference,
     ))
     db.commit()
-    return RedirectResponse(url=f"/?done={case_id}", status_code=303)
+
+    # Redirect based on user action
+    if action == "next":
+        # Load next globally least-compared pair
+        return RedirectResponse(url="/compare", status_code=303)
+    else:
+        # Exit back to home
+        return RedirectResponse(url=f"/?done={case_id}", status_code=303)

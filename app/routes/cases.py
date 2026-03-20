@@ -1,4 +1,5 @@
 from itertools import combinations
+import json
 
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import Response
@@ -11,6 +12,47 @@ from app.models import Case, ComparisonEvaluation, Evaluation, ModelOutput
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+
+def compute_dice(region_a_list, region_b_list):
+    """
+    Compute Dice similarity coefficient between two sets of regions.
+    Dice = 2 * |Overlap| / (|Region A| + |Region B|)
+    Regions expected in normalized [0,1] coordinates: {x, y, w, h}
+    """
+    if not region_a_list or not region_b_list:
+        return 0.0
+
+    # Calculate total area for each set
+    area_a = sum(region['w'] * region['h'] for region in region_a_list)
+    area_b = sum(region['w'] * region['h'] for region in region_b_list)
+
+    if area_a == 0 or area_b == 0:
+        return 0.0
+
+    # Calculate overlaps between all pairs of regions
+    overlap = 0.0
+    for ra in region_a_list:
+        for rb in region_b_list:
+            # Calculate intersection rectangle
+            x_min_a, y_min_a = ra['x'], ra['y']
+            x_max_a = ra['x'] + ra['w']
+            y_max_a = ra['y'] + ra['h']
+
+            x_min_b, y_min_b = rb['x'], rb['y']
+            x_max_b = rb['x'] + rb['w']
+            y_max_b = rb['y'] + rb['h']
+
+            x_min = max(x_min_a, x_min_b)
+            x_max = min(x_max_a, x_max_b)
+            y_min = max(y_min_a, y_min_b)
+            y_max = min(y_max_a, y_max_b)
+
+            if x_max > x_min and y_max > y_min:
+                overlap += (x_max - x_min) * (y_max - y_min)
+
+    dice = 2 * overlap / (area_a + area_b)
+    return round(dice, 3)
 
 
 @router.get("/")
@@ -89,6 +131,45 @@ def evaluate_page(request: Request, case_id: int, output_id: int, db: Session = 
     })
 
 
+@router.get("/compare")
+def compare_global(request: Request, db: Session = Depends(get_db)):
+    """Find the globally least-compared pair across all cases and load the comparison form."""
+    cases = db.query(Case).options(joinedload(Case.outputs)).all()
+
+    # Build list of all possible pairs with their comparison counts
+    all_pairs = []
+    for case in cases:
+        outputs = sorted(case.outputs, key=lambda o: o.id)
+        if len(outputs) < 2:
+            continue
+
+        for a, b in combinations(outputs, 2):
+            count = db.query(ComparisonEvaluation).filter(
+                or_(
+                    and_(ComparisonEvaluation.output_a_id == a.id,
+                         ComparisonEvaluation.output_b_id == b.id),
+                    and_(ComparisonEvaluation.output_a_id == b.id,
+                         ComparisonEvaluation.output_b_id == a.id),
+                )
+            ).count()
+            all_pairs.append((count, case, a, b))
+
+    if not all_pairs:
+        raise HTTPException(status_code=400, detail="No cases available for comparison")
+
+    # Sort by comparison count and pick the least-compared
+    all_pairs.sort(key=lambda x: x[0])
+    best_count, case, output_a, output_b = all_pairs[0]
+
+    return templates.TemplateResponse("compare.html", {
+        "request": request,
+        "case": case,
+        "output_a": output_a,
+        "output_b": output_b,
+        "pair_count": best_count,
+    })
+
+
 @router.get("/cases/{case_id}/compare")
 def compare_page(request: Request, case_id: int, db: Session = Depends(get_db)):
     case = (
@@ -139,42 +220,52 @@ def case_image(case_id: int, db: Session = Depends(get_db)):
 
 @router.get("/results")
 def results_page(request: Request, db: Session = Depends(get_db)):
-    cases = (
-        db.query(Case)
-        .options(joinedload(Case.outputs).joinedload(ModelOutput.evaluations))
-        .order_by(Case.id)
-        .all()
-    )
+    # Fetch all evaluations to compute global statistics
+    all_outputs = db.query(ModelOutput).options(joinedload(ModelOutput.evaluations)).all()
 
-    # Pre-compute per-output stats so the template stays simple
-    results = []
     total_evals = 0
     total_flagged = 0
 
-    for case in cases:
-        output_rows = []
-        for output in sorted(case.outputs, key=lambda o: o.id):
-            evals = output.evaluations
-            n = len(evals)
-            total_evals += n
-            flags = sum(1 for e in evals if e.is_flagged)
-            total_flagged += flags
+    # Compute model-level aggregations (for radar charts)
+    models_data = {}  # model_key → {evals_list, ratings_dict}
 
-            def avg(values):
-                v = [x for x in values if x is not None]
-                return round(sum(v) / len(v), 1) if v else None
+    for output in all_outputs:
+        evals = output.evaluations
+        total_evals += len(evals)
+        flagged = sum(1 for e in evals if e.is_flagged)
+        total_flagged += flagged
 
-            output_rows.append({
-                "output": output,
-                "n": n,
-                "avg_rating":       avg([e.rating for e in evals]),
-                "avg_accuracy":     avg([e.accuracy for e in evals]),
-                "avg_completeness": avg([e.completeness for e in evals]),
-                "avg_clarity":      avg([e.clarity for e in evals]),
-                "flags": flags,
-                "evals": evals,
-            })
-        results.append({"case": case, "outputs": output_rows})
+        model_key = f"{output.model_name} {output.model_version}" if output.model_version else output.model_name
+        if model_key not in models_data:
+            models_data[model_key] = {
+                "model_name": output.model_name,
+                "model_version": output.model_version,
+                "evals": [],
+            }
+        models_data[model_key]["evals"].extend(evals)
+
+    # Calculate averages per model
+    def avg(values):
+        v = [x for x in values if x is not None]
+        return round(sum(v) / len(v), 2) if v else 0  # Default to 0 for missing ratings
+
+    models_summary = []
+    for model_key, data in sorted(models_data.items()):
+        evals = data["evals"]
+        if not evals:
+            continue
+
+        models_summary.append({
+            "model_key": model_key,
+            "model_name": data["model_name"],
+            "model_version": data["model_version"],
+            "avg_overall_rating": avg([e.rating for e in evals]),
+            "avg_accuracy": avg([e.accuracy for e in evals]),
+            "avg_completeness": avg([e.completeness for e in evals]),
+            "avg_clarity": avg([e.clarity for e in evals]),
+            "eval_count": len(evals),
+            "flag_count": sum(1 for e in evals if e.is_flagged),
+        })
 
     # ── Elo ranking from head-to-head comparisons ──────────────────────────
     PREF_TO_SCORE = {
@@ -260,16 +351,42 @@ def results_page(request: Request, db: Session = Depends(get_db)):
         reverse=True,
     )
 
+    # ── Dice score evaluation for marked regions ──────────────────────────────
+    dice_data = []  # List of {model_key, case_id, dice_score}
+    for output in all_outputs:
+        model_key = f"{output.model_name} {output.model_version}" if output.model_version else output.model_name
+        bounding_boxes = []
+        if output.bounding_boxes:
+            try:
+                bounding_boxes = json.loads(output.bounding_boxes)
+            except (json.JSONDecodeError, TypeError):
+                bounding_boxes = []
+
+        for eval in output.evaluations:
+            marked_regions = []
+            if eval.marked_regions:
+                try:
+                    marked_regions = json.loads(eval.marked_regions)
+                except (json.JSONDecodeError, TypeError):
+                    marked_regions = []
+
+            # Only compute Dice if both regions exist
+            if bounding_boxes and marked_regions:
+                dice_score = compute_dice(marked_regions, bounding_boxes)
+                dice_data.append({
+                    "model_key": model_key,
+                    "case_id": output.case_id,
+                    "dice_score": dice_score,
+                    "eval_id": eval.id,
+                })
+
     return templates.TemplateResponse("results.html", {
         "request": request,
-        "results": results,
+        "models_summary": models_summary,
         "total_evals": total_evals,
         "total_flagged": total_flagged,
-        "cases_complete": sum(
-            1 for r in results
-            if all(row["n"] > 0 for row in r["outputs"])
-        ),
-        "total_cases": len(cases),
+        "total_cases": len(db.query(Case).all()),
         "elo_rankings": elo_rankings,
         "total_comparisons": sum(comp_counts.values()) // 2 if comp_counts else 0,
+        "dice_data": dice_data,
     })

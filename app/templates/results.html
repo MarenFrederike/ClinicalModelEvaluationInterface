@@ -208,6 +208,50 @@ header {
     .eval-row .comment { color: #374151; font-style: italic; }
     .eval-row.flagged { background: #fff7f7; }
 
+    /* ── Text highlights display ── */
+    .text-highlights-display {
+      grid-column: 1 / -1;
+      margin-top: 0.4rem;
+      padding: 0.5rem 0.65rem;
+      background: #f9fafb;
+      border-radius: 4px;
+      font-size: 0.73rem;
+      line-height: 1.5;
+    }
+    .highlights-label {
+      font-weight: 700;
+      color: #6b7280;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .highlight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.3rem;
+      margin-bottom: 0.2rem;
+      padding: 0.2rem;
+      border-radius: 3px;
+    }
+    .highlight-item.green { background: #d1fae5; }
+    .highlight-item.red { background: #fee2e2; }
+    .highlight-item.yellow { background: #fef3c7; }
+    .highlight-badge {
+      font-weight: 700;
+      flex-shrink: 0;
+      min-width: 50px;
+      font-size: 0.72rem;
+    }
+    .highlight-badge.green { color: #065f46; }
+    .highlight-badge.red { color: #991b1b; }
+    .highlight-badge.yellow { color: #92400e; }
+    .highlight-text {
+      font-style: italic;
+      color: #374151;
+      word-break: break-word;
+      flex: 1;
+      font-size: 0.72rem;
+    }
+
     .no-evals {
       padding: 1rem 1.5rem;
       font-size: 0.82rem;
@@ -222,15 +266,15 @@ header {
     }
     .elo-header, .elo-row {
       display: grid;
-      grid-template-columns: 1fr 70px 90px repeat(4, 72px);
-      padding: 0.75rem 1.25rem;
+      grid-template-columns: 1fr 70px 90px repeat(4, 90px);
+      padding: 1rem 1.5rem;
       align-items: center;
-      gap: 0.5rem;
+      gap: 1rem;
     }
     .elo-header {
       background: #f9fafb; border-bottom: 1px solid #e5e7eb;
-      font-size: 0.7rem; font-weight: 700;
-      letter-spacing: 0.07em; text-transform: uppercase; color: #6b7280;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase; color: #374151;
     }
     .elo-row { border-bottom: 1px solid #f3f4f6; font-size: 0.82rem; }
     .elo-row:last-child { border-bottom: none; }
@@ -268,24 +312,16 @@ header {
       <div class="value">{{ total_evals }}</div>
     </div>
     <div class="stat-card">
-      <div class="label">Cases completed</div>
-      <div class="value complete">{{ cases_complete }} / {{ total_cases }}</div>
+      <div class="label">Total cases</div>
+      <div class="value complete">{{ total_cases }}</div>
     </div>
     <div class="stat-card">
       <div class="label">Outputs flagged</div>
       <div class="value {% if total_flagged > 0 %}flagged{% endif %}">{{ total_flagged }}</div>
     </div>
     <div class="stat-card">
-      <div class="label">Outputs in queue</div>
-      <div class="value">
-        {% set queued = namespace(n=0) %}
-        {% for r in results %}
-          {% for row in r.outputs %}
-            {% if row.output.status == 'queued' %}{% set queued.n = queued.n + 1 %}{% endif %}
-          {% endfor %}
-        {% endfor %}
-        {{ queued.n }}
-      </div>
+      <div class="label">Models evaluated</div>
+      <div class="value">{{ models_summary | length }}</div>
     </div>
     <div class="stat-card">
       <div class="label">Comparisons</div>
@@ -327,104 +363,259 @@ header {
   </div>
   {% endif %}
 
-  <p class="section-title">Per-case breakdown</p>
-
-  {% for r in results %}
-  {% set case = r.case %}
-  <div class="case-block">
-
-    <div class="case-block-header">
-      {% set m = case.modality | lower %}
-      {% if 'ct' in m %}<span class="badge badge-ct">CT</span>
-      {% elif 'mri' in m %}<span class="badge badge-mri">MRI</span>
-      {% elif 'x-ray' in m or 'xray' in m %}<span class="badge badge-xray">X-ray</span>
-      {% elif 'ultra' in m %}<span class="badge badge-us">US</span>
-      {% else %}<span class="badge badge-other">{{ case.modality }}</span>{% endif %}
-      <strong>{{ case.title }}</strong>
-      {% if case.patient_age or case.patient_sex %}
-      <span class="patient">
-        {% if case.patient_age %}{{ case.patient_age }}y{% endif %}
-        {% if case.patient_sex %} · {{ case.patient_sex }}{% endif %}
-      </span>
-      {% endif %}
-    </div>
-
-    {% if r.outputs %}
-    <table>
-      <thead>
-        <tr>
-          <th>Model</th>
-          <th>Status</th>
-          <th>Evals</th>
-          <th>Avg rating</th>
-          <th>Accuracy</th>
-          <th>Completeness</th>
-          <th>Clarity</th>
-          <th>Flags</th>
-          <th>Detail</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in r.outputs %}
-        <tr>
-          <td>
-            <strong>{{ row.output.model_name }}</strong>
-            {% if row.output.model_version %}
-            <span style="color:#9ca3af"> {{ row.output.model_version }}</span>
-            {% endif %}
-          </td>
-          <td>
-            <span class="badge badge-{{ row.output.status }}">{{ row.output.status }}</span>
-          </td>
-          <td>{{ row.n }}</td>
-          <td>
-            {% if row.avg_rating %}
-            {% set r_int = row.avg_rating | round | int %}
-            <span class="rating-pill r{{ r_int }}">{{ row.avg_rating }}</span>
-            {% else %}
-            <span class="rating-pill r-none">—</span>
-            {% endif %}
-          </td>
-          <td>{{ row.avg_accuracy if row.avg_accuracy else '—' }}</td>
-          <td>{{ row.avg_completeness if row.avg_completeness else '—' }}</td>
-          <td>{{ row.avg_clarity if row.avg_clarity else '—' }}</td>
-          <td>
-            {% if row.flags > 0 %}
-            <span class="flag-chip">⚑ {{ row.flags }}</span>
-            {% else %}—{% endif %}
-          </td>
-          <td>
-            {% if row.evals %}
-            <details>
-              <summary>▸ {{ row.n }} submission{{ 's' if row.n != 1 else '' }}</summary>
-              <div class="eval-list">
-                {% for e in row.evals %}
-                <div class="eval-row {% if e.is_flagged %}flagged{% endif %}">
-                  <span class="clinician">{{ e.clinician_id }}{% if e.is_flagged %} ⚑{% endif %}</span>
-                  <span class="dim" title="Overall">{{ e.rating }}/5</span>
-                  <span class="dim" title="Accuracy">{{ e.accuracy if e.accuracy else '—' }}</span>
-                  <span class="dim" title="Completeness">{{ e.completeness if e.completeness else '—' }}</span>
-                  <span class="dim" title="Clarity">{{ e.clarity if e.clarity else '—' }}</span>
-                  <span class="comment">{{ e.comments if e.comments else '' }}</span>
-                </div>
-                {% endfor %}
-              </div>
-            </details>
-            {% else %}
-            <span style="color:#9ca3af;font-size:0.78rem">none yet</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="no-evals">No outputs for this case.</div>
-    {% endif %}
-
+  <!-- ── Radar chart ── -->
+  {% if models_summary %}
+  <p class="section-title">Model Performance — Evaluation Dimensions</p>
+  <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 2rem; margin-bottom: 2rem;">
+    <canvas id="radar-chart"></canvas>
   </div>
-  {% endfor %}
+  {% endif %}
 
+  <!-- ── Dice score scatter plot ── -->
+  {% if dice_data %}
+  <p class="section-title">Region Overlap Evaluation — Dice Score</p>
+  <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 1rem;">
+    Dice Score (Sørensen–Dice coefficient) measures the spatial overlap between evaluator-marked regions and model attention regions.
+    Ranges from 0 (no overlap) to 1 (perfect overlap).
+  </p>
+  <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 2rem; margin-bottom: 2rem;">
+    <canvas id="dice-scatter"></canvas>
+  </div>
+  {% endif %}
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Single radar chart with all evaluation dimensions
+  const modelData = {{ models_summary | tojson | safe }};
+
+  if (modelData && modelData.length > 0) {
+    // Assign colors to models
+    const colors = [
+      '#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+      '#06b6d4', '#ec4899', '#6366f1', '#14b8a6', '#f97316'
+    ];
+
+    const modelColors = {};
+    modelData.forEach((model, idx) => {
+      modelColors[model.model_key] = colors[idx % colors.length];
+    });
+
+    // Axes for evaluation dimensions
+    const axes = [
+      'Overall Quality',
+      'Clinical Accuracy',
+      'Completeness',
+      'Clarity'
+    ];
+
+    const dataKeys = [
+      'avg_overall_rating',
+      'avg_accuracy',
+      'avg_completeness',
+      'avg_clarity'
+    ];
+
+    // Create dataset for each model
+    const datasets = modelData.map(model => ({
+      label: model.model_key,
+      data: dataKeys.map(key => model[key]),
+      borderColor: modelColors[model.model_key],
+      backgroundColor: modelColors[model.model_key] + '20',
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: modelColors[model.model_key],
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2
+    }));
+
+    const ctx = document.getElementById('radar-chart').getContext('2d');
+
+    new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: axes,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        scales: {
+          r: {
+            min: 0,
+            max: 5,
+            ticks: {
+              stepSize: 1,
+              font: { size: 12 }
+            },
+            grid: {
+              color: '#e5e7eb'
+            },
+            pointLabels: {
+              font: { size: 13, weight: 'bold' },
+              color: '#374151'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: { size: 13 },
+              padding: 20,
+              usePointStyle: true,
+              boxWidth: 8
+            }
+          },
+          tooltip: {
+            backgroundColor: '#1a2233',
+            padding: 12,
+            titleFont: { size: 13, weight: 'bold' },
+            bodyFont: { size: 12 },
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ' + context.parsed.r.toFixed(2);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+
+<script>
+  // Dice score scatter plot
+  const diceDataRaw = {{ dice_data | tojson | safe }};
+
+  if (diceDataRaw && diceDataRaw.length > 0) {
+    // Assign colors to models (same as radar chart)
+    const colors = [
+      '#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+      '#06b6d4', '#ec4899', '#6366f1', '#14b8a6', '#f97316'
+    ];
+
+    // Get unique model keys in order of appearance
+    const uniqueModels = [...new Set(diceDataRaw.map(d => d.model_key))];
+    const modelColors = {};
+    uniqueModels.forEach((model, idx) => {
+      modelColors[model] = colors[idx % colors.length];
+    });
+
+    // Group data by model for scatter plot datasets
+    const datasetsByModel = {};
+    diceDataRaw.forEach(d => {
+      if (!datasetsByModel[d.model_key]) {
+        datasetsByModel[d.model_key] = [];
+      }
+      datasetsByModel[d.model_key].push({
+        x: d.case_id,
+        y: d.dice_score
+      });
+    });
+
+    // Calculate axis ranges from actual data
+    const allCaseIds = diceDataRaw.map(d => d.case_id);
+    const allDiceScores = diceDataRaw.map(d => d.dice_score);
+
+    const minCaseId = Math.min(...allCaseIds);
+    const maxCaseId = Math.max(...allCaseIds);
+    const minDice = Math.min(...allDiceScores);
+    const maxDice = Math.max(...allDiceScores);
+
+    // Add padding (10% of range)
+    const xPadding = (maxCaseId - minCaseId) * 0.1 || 0.5;
+    const yPadding = (maxDice - minDice) * 0.1 || 0.05;
+
+    // Create datasets
+    const datasets = Object.entries(datasetsByModel).map(([model, points]) => ({
+      label: model,
+      data: points,
+      backgroundColor: modelColors[model],
+      borderColor: modelColors[model],
+      borderWidth: 2,
+      pointRadius: 6,
+      pointHoverRadius: 8,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      fill: false,
+      tension: 0
+    }));
+
+    const ctxDice = document.getElementById('dice-scatter').getContext('2d');
+
+    new Chart(ctxDice, {
+      type: 'scatter',
+      data: {
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2,
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom',
+            title: {
+              display: true,
+              text: 'Case ID',
+              font: { size: 13, weight: 'bold' }
+            },
+            min: minCaseId - xPadding,
+            max: maxCaseId + xPadding,
+            ticks: {
+              font: { size: 11 }
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Dice Score',
+              font: { size: 13, weight: 'bold' }
+            },
+            min: Math.max(0, minDice - yPadding),
+            max: Math.min(1, maxDice + yPadding),
+            ticks: {
+              stepSize: undefined,
+              font: { size: 11 },
+              callback: function(value) {
+                return value.toFixed(2);
+              }
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: { size: 12 },
+              padding: 15,
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            backgroundColor: '#1a2233',
+            padding: 12,
+            titleFont: { size: 12, weight: 'bold' },
+            bodyFont: { size: 11 },
+            callbacks: {
+              label: function(context) {
+                return 'Dice: ' + context.parsed.y.toFixed(3);
+              },
+              afterLabel: function(context) {
+                return 'Case: ' + context.parsed.x;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+
 </body>
 </html>
