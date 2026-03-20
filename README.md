@@ -59,7 +59,7 @@ The only prerequisite is [Docker Desktop](https://www.docker.com/products/docker
 
 ```bash
 git clone <repo-url>
-cd ApplicationProject
+cd ClinicalModelEvaluationInterface
 docker compose up
 ```
 
