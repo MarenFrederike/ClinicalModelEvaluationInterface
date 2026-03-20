@@ -8,7 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
-COPY data/ ./data/   
 
 # data/ is mounted as a volume at runtime — just ensure the directory exists
 RUN mkdir -p data

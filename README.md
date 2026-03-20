@@ -65,7 +65,7 @@ docker compose up
 
 Open your browser at **http://localhost:8080**.
 
-The database is created and fully seeded on the first boot. The `data/` directory is mounted as a named Docker volume (`db_data`), so all evaluations persist across container restarts and rebuilds — **stopping or rebuilding the container never touches the data**.
+The database is created and fully seeded on the first boot. The `data/` directory is bind-mounted from the project folder (`./data:/app/data`), so all evaluations persist across container restarts and rebuilds — **stopping or rebuilding the container never touches the data**.
 On that note: even though it is no good practice to load a db into git, it was chosen for this purpose to provide a small example at startup without having to provide a proper server hosting the website. 
 
 **Subsequent starts** (no code changes):
@@ -80,7 +80,8 @@ docker compose up --build
 
 **Full reset** (wipes all evaluations and re-seeds from scratch — use with care):
 ```bash
-docker compose down -v
+docker compose down
+# then delete ./data/db.sqlite (or the whole ./data folder)
 docker compose up --build
 ```
 
@@ -115,7 +116,7 @@ On the very first startup (Docker or local) and only if the database is empty, t
 
 If image downloads fail (e.g. no network access), the cases and outputs are still fully seeded — only the image binary data in the database will be missing. The "View image ↗" link to the Radiopaedia viewer will still work.
 
-> **Re-seeding (local dev):** Delete `data/db.sqlite` and restart the server. With Docker, use `docker compose down -v && docker compose up --build` — but note this wipes all submitted evaluations.
+> **Re-seeding (local dev):** Delete `data/db.sqlite` and restart the server. With Docker bind mounts, run `docker compose down`, delete `./data/db.sqlite`, then run `docker compose up --build`.
 
 ---
 
@@ -124,7 +125,7 @@ If image downloads fail (e.g. no network access), the cases and outputs are stil
 - **One output can be evaluated multiple times** by different clinicians (or the same clinician). The results page averages across all evaluations for a given output.
 - **SQLAlchemy ≥ 2.0.40 required.** Version 2.0.35 is incompatible with Python 3.14 and will crash on startup. The Docker image handles this automatically.
 - **Image data is stored in SQLite.** For production use with many cases or high-resolution images, consider migrating image storage to a file system or object store (S3, etc.) and storing only the path in the DB.
-- **Database persistence in Docker** is handled by a named volume (`db_data`). Stopping or rebuilding the container does not lose data. Only `docker compose down -v` removes the volume.
+- **Database persistence in Docker** is handled by a bind mount (`./data:/app/data`). Stopping or rebuilding the container does not lose data. Deleting `./data/db.sqlite` (or `./data`) resets stored evaluations.
 
 ---
 
