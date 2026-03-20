@@ -66,6 +66,7 @@ docker compose up
 Open your browser at **http://localhost:8080**.
 
 The database is created and fully seeded on the first boot. The `data/` directory is mounted as a named Docker volume (`db_data`), so all evaluations persist across container restarts and rebuilds — **stopping or rebuilding the container never touches the data**.
+On that note: even though it is no good practice to load a db into git, it was chosen for this purpose to provide a small example at startup without having to provide a proper server hosting the website. 
 
 **Subsequent starts** (no code changes):
 ```bash
