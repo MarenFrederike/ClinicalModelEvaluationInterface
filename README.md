@@ -60,7 +60,7 @@ The only prerequisite is [Docker Desktop](https://www.docker.com/products/docker
 ```bash
 git clone <repo-url>
 cd ApplicationProject
-docker compose up --build
+docker compose up
 ```
 
 Open your browser at **http://localhost:8080**.
@@ -105,14 +105,14 @@ Open your browser at **http://127.0.0.1:8000**.
 
 ## First Boot
 
-On the very first startup (Docker or local), the app automatically:
+On the very first startup (Docker or local) and only if the database is empty, the app automatically:
 
 1. Creates all database tables in `data/db.sqlite`
 2. Detects that the database is empty and runs the seed script
-3. Downloads a representative image for each of the 6 cases from Radiopaedia (stored as binary BLOBs in the DB — no files on disk)
+3. Downloads a representative image for each of the 6 cases from Radiopaedia and stores them as binary data directly in the database (not as separate image files on disk)
 4. Inserts 2 model outputs per case (12 total), each with mock bounding boxes
 
-If image downloads fail (e.g. no network access), the cases and outputs are still fully seeded — only the image BLOBs will be missing. The "View image ↗" link to the Radiopaedia viewer will still work.
+If image downloads fail (e.g. no network access), the cases and outputs are still fully seeded — only the image binary data in the database will be missing. The "View image ↗" link to the Radiopaedia viewer will still work.
 
 > **Re-seeding (local dev):** Delete `data/db.sqlite` and restart the server. With Docker, use `docker compose down -v && docker compose up --build` — but note this wipes all submitted evaluations.
 
@@ -120,7 +120,6 @@ If image downloads fail (e.g. no network access), the cases and outputs are stil
 
 ## Important Notes
 
-- **No authentication.** Clinician IDs are self-reported strings. This is intentional for low-friction research use — not a production deployment.
 - **One output can be evaluated multiple times** by different clinicians (or the same clinician). The results page averages across all evaluations for a given output.
 - **SQLAlchemy ≥ 2.0.40 required.** Version 2.0.35 is incompatible with Python 3.14 and will crash on startup. The Docker image handles this automatically.
 - **Image data is stored in SQLite.** For production use with many cases or high-resolution images, consider migrating image storage to a file system or object store (S3, etc.) and storing only the path in the DB.

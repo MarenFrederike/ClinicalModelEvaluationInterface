@@ -82,7 +82,7 @@ Creates a SQLite engine pointing at `data/db.sqlite`. Provides:
 The seed script runs exactly once (it checks `db.query(Case).first()` and returns immediately if any case exists). It:
 
 - Iterates over a `CASES` list of 6 Radiopaedia cases (title, modality, clinical prompt, patient age/sex, image URL)
-- For each case: calls `_fetch_image(url)` using `urllib.request` to download a JPEG, stores the raw bytes in `cases.image_data`
+- For each case: calls `_fetch_image(url)` using `urllib.request` to download a JPEG, stores the raw bytes in `cases.image_data` as a BLOB in the database
 - Creates 2 `ModelOutput` rows per case from the `OUTPUTS` dict, each with:
   - A realistic multi-paragraph radiology report (`output_text`)
   - A `bounding_boxes` JSON string listing 2–4 regions the model "attended to" in normalised [0–1] coordinates
